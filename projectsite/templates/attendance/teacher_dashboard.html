@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Teacher Dashboard | GeoAttend{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0 fw-bold">Teacher Attendance Dashboard</h3>
+    <form method="get" class="d-flex gap-2">
+        <select name="session" class="form-select" onchange="this.form.submit()">
+            {% for s in sessions %}
+                <option value="{{ s.id }}" {% if selected_session and s.id == selected_session.id %}selected{% endif %}>
+                    {{ s.course.code }} — {{ s.title }} ({{ s.starts_at|date:"M d, H:i" }})
+                </option>
+            {% empty %}
+                <option disabled>No sessions created yet</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+{% if selected_session %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3">
+            <small class="text-muted">Course & Venue</small>
+            <h6 class="fw-bold mb-0">{{ selected_session.course.code }} • {{ selected_session.venue.name|default:"Custom Pin" }}</h6>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3">
+            <small class="text-muted">Geofence Radius</small>
+            <h6 class="fw-bold mb-0">{{ selected_session.radius_m }} meters</h6>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3">
+            <small class="text-muted">Late Threshold</small>
+            <h6 class="fw-bold mb-0">{{ selected_session.late_after|date:"M d, Y H:i" }}</h6>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm p-3">
+            <small class="text-muted">Total Check-Ins</small>
+            <h6 class="fw-bold mb-0">{{ records|length }}</h6>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold">Attendance Log</div>
+    <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Student ID</th>
+                    <th>Student Name</th>
+                    <th>Status</th>
+                    <th>Distance (m)</th>
+                    <th>GPS Coordinates</th>
+                    <th>Checked In At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td class="fw-semibold">{{ r.student.student_id }}</td>
+                    <td>{{ r.student.lastname }}, {{ r.student.firstname }}</td>
+                    <td>
+                        {% if r.status == 'present' %}
+                            <span class="badge bg-success">Present</span>
+                        {% elif r.status == 'late' %}
+                            <span class="badge bg-warning text-dark">Late</span>
+                        {% else %}
+                            <span class="badge bg-danger">Rejected</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.distance_m }} m</td>
+                    <td class="small text-muted">{{ r.lat }}, {{ r.lng }}</td>
+                    <td>{{ r.checked_in_at|date:"M d, Y H:i:s" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No attendance records submitted for this session yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">Create a Department, Course, Venue, and active Session in Django Admin to begin tracking attendance.</div>
+{% endif %}
+{% endblock %}

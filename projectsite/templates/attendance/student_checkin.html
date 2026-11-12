@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block title %}Student GPS Check-In | GeoAttend{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Student Attendance Check-In</h5>
+            </div>
+            <div class="card-body">
+                <form id="checkinForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="sessionSelect" class="form-label fw-semibold">Active Class Session</label>
+                        <select id="sessionSelect" class="form-select" required>
+                            {% if active_sessions %}
+                                {% for s in active_sessions %}
+                                    <option value="{{ s.id }}"
+                                            data-lat="{{ s.center_lat }}"
+                                            data-lng="{{ s.center_lng }}"
+                                            data-radius="{{ s.radius_m }}">
+                                        {{ s.course.code }} — {{ s.title }} (Ends {{ s.ends_at|date:"H:i" }})
+                                    </option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled selected>No active sessions right now</option>
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="studentIdInput" class="form-label fw-semibold">Student ID Number</label>
+                        <input type="text" id="studentIdInput" class="form-control" placeholder="e.g., 2023-8-0123" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small text-muted">Latitude</label>
+                            <input type="text" id="latInput" class="form-control bg-light" readonly required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted">Longitude</label>
+                            <input type="text" id="lngInput" class="form-control bg-light" readonly required>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" id="locateBtn" class="btn btn-outline-secondary w-50">
+                            Refresh GPS
+                        </button>
+                        <button type="submit" id="submitBtn" class="btn btn-primary w-50" {% if not active_sessions %}disabled{% endif %}>
+                            Check In Now
+                        </button>
+                    </div>
+                </form>
+
+                <div id="resultAlert" class="alert mt-3 d-none" role="alert"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-semibold">Live Geofence Map</h6>
+            </div>
+            <div class="card-body">
+                <div id="map"></div>
+                <small class="text-muted d-block mt-2">
+                    Blue circle = Allowed classroom geofence radius. Red pin = Your detected GPS location.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const sessionSelect = document.getElementById('sessionSelect');
+    const latInput = document.getElementById('latInput');
+    const lngInput = document.getElementById('lngInput');
+    const resultAlert = document.getElementById('resultAlert');
+
+    // Initialize Leaflet Map (default centered on Puerto Princesa / PSU area)
+    const map = L.map('map').setView([9.7764, 118.7340], 17);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
+        maxNativeZoom: 17,
+        maxZoom: 20
+    }).addTo(map);
+    let geofenceCircle = null;
+    let studentMarker = null;
+
+    function drawSessionGeofence() {
+        const selected = sessionSelect.options[sessionSelect.selectedIndex];
+        if (!selected || !selected.dataset.lat) return;
+
+        const cLat = parseFloat(selected.dataset.lat);
+        const cLng = parseFloat(selected.dataset.lng);
+        const radius = parseFloat(selected.dataset.radius);
+
+        if (geofenceCircle) map.removeLayer(geofenceCircle);
+        geofenceCircle = L.circle([cLat, cLng], {
+            color: '#0d6efd',
+            fillColor: '#0d6efd',
+            fillOpacity: 0.15,
+            radius: radius
+        }).addTo(map);
+
+        map.setView([cLat, cLng], 18);
+    }
+
+    function handlePositionSuccess(pos) {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        latInput.value = lat;
+        lngInput.value = lng;
+        resultAlert.classList.add('d-none');
+
+        if (studentMarker) map.removeLayer(studentMarker);
+        studentMarker = L.marker([lat, lng]).addTo(map).bindPopup('Your Location').openPopup();
+
+        if (geofenceCircle) {
+            const bounds = L.latLngBounds([geofenceCircle.getLatLng(), [lat, lng]]);
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+        }
+    }
+    function detectLocation() {
+        if (!navigator.geolocation) {
+            showAlert('danger', 'Geolocation is not supported by your browser.');
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            handlePositionSuccess,
+            () => {
+                // Fallback for desktop PCs without hardware GPS chips
+                navigator.geolocation.getCurrentPosition(
+                    handlePositionSuccess,
+                    (err) => {
+                        showAlert('warning', `GPS Error (${err.code}): ${err.message}. Check Windows Location Services or use DevTools Sensors.`);
+                    },
+                    { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+                );
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
+        );
+    }
+
+    function showAlert(type, message) {
+        resultAlert.className = `alert alert-${type} mt-3`;
+        resultAlert.textContent = message;
+        resultAlert.classList.remove('d-none');
+    }
+
+    sessionSelect.addEventListener('change', drawSessionGeofence);
+    document.getElementById('locateBtn').addEventListener('click', detectLocation);
+
+    document.getElementById('checkinForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const sessionId = sessionSelect.value;
+        const studentId = document.getElementById('studentIdInput').value.trim();
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        if (!sessionId || isNaN(lat) || isNaN(lng)) {
+            showAlert('warning', 'Please wait for GPS coordinates before checking in.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/sessions/${sessionId}/checkin/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ student_id: studentId, lat: lat, lng: lng })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert('success', `Checked in as ${data.status.toUpperCase()}! Distance: ${data.distance_m}m.`);
+            } else if (data.status === 'rejected') {
+                showAlert('danger', `Check-in REJECTED: You are ${data.distance_m}m away (outside allowed radius).`);
+            } else {
+                showAlert('danger', data.detail || 'Check-in failed.');
+            }
+        } catch (error) {
+            showAlert('danger', 'Network error while submitting check-in.');
+        }
+    });
+
+    // Run on load
+    drawSessionGeofence();
+    detectLocation();
+</script>
+{% endblock %}
