@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}Create Attendance Session | GeoAttend{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0 fw-bold">Create Attendance Session</h3>
+    <a href="{% url 'teacher-dashboard' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Session Details & Schedule</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Course</label>
+                        {{ form.course }}
+                        {% if form.course.errors %}<div class="text-danger small">{{ form.course.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Preset Venue (Optional)</label>
+                        {{ form.venue }}
+                        <small class="text-muted">Selecting a preset venue snaps the map pin automatically.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Session Title</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}<div class="text-danger small">{{ form.title.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Center Latitude</label>
+                            {{ form.center_lat }}
+                            {% if form.center_lat.errors %}<div class="text-danger small">{{ form.center_lat.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Center Longitude</label>
+                            {{ form.center_lng }}
+                            {% if form.center_lng.errors %}<div class="text-danger small">{{ form.center_lng.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Radius (meters)</label>
+                            {{ form.radius_m }}
+                            {% if form.radius_m.errors %}<div class="text-danger small">{{ form.radius_m.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Starts At</label>
+                            {{ form.starts_at }}
+                            {% if form.starts_at.errors %}<div class="text-danger small">{{ form.starts_at.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Late After</label>
+                            {{ form.late_after }}
+                            {% if form.late_after.errors %}<div class="text-danger small">{{ form.late_after.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Ends At</label>
+                            {{ form.ends_at }}
+                            {% if form.ends_at.errors %}<div class="text-danger small">{{ form.ends_at.errors.0 }}</div>{% endif %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                        Save & Launch Session
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold">Drop Geofence Pin on Map</h6>
+                <button type="button" id="useCurrentGpsBtn" class="btn btn-sm btn-outline-primary">
+                    Use My Current GPS
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="map" style="height: 430px;"></div>
+                <small class="text-muted d-block mt-2">
+                    Click anywhere on the map or drag the blue pin to set the exact classroom center. Adjust the radius field to preview the allowed check-in zone.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ venues_data|json_script:"venues-data" }}
+<script>
+    const venuesData = JSON.parse(document.getElementById('venues-data').textContent);
+    const venueSelect = document.getElementById('venueSelect');
+    const latInput = document.getElementById('centerLatInput');
+    const lngInput = document.getElementById('centerLngInput');
+    const radiusInput = document.getElementById('radiusInput');
+
+    const initialLat = parseFloat(latInput.value) || 9.776400;
+    const initialLng = parseFloat(lngInput.value) || 118.734000;
+    const initialRadius = parseFloat(radiusInput.value) || 50;
+
+    const map = L.map('map').setView([initialLat, initialLng], 18);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
+        maxNativeZoom: 17,
+        maxZoom: 20
+    }).addTo(map);
+
+    const pinMarker = L.marker([initialLat, initialLng], { draggable: true }).addTo(map);
+    const geofenceCircle = L.circle([initialLat, initialLng], {
+        color: '#0d6efd',
+        fillColor: '#0d6efd',
+        fillOpacity: 0.2,
+        radius: initialRadius
+    }).addTo(map);
+
+    function updatePinAndCircle(lat, lng, recenter = false) {
+        const cleanLat = parseFloat(lat).toFixed(6);
+        const cleanLng = parseFloat(lng).toFixed(6);
+        latInput.value = cleanLat;
+        lngInput.value = cleanLng;
+
+        pinMarker.setLatLng([cleanLat, cleanLng]);
+        geofenceCircle.setLatLng([cleanLat, cleanLng]);
+
+        if (recenter) {
+            map.setView([cleanLat, cleanLng], 18);
+        }
+    }
+
+    // Click anywhere on map to move pin
+    map.on('click', (e) => {
+        venueSelect.value = '';
+        updatePinAndCircle(e.latlng.lat, e.latlng.lng, false);
+    });
+
+    // Drag marker to fine-tune pin
+    pinMarker.on('dragend', () => {
+        const pos = pinMarker.getLatLng();
+        venueSelect.value = '';
+        updatePinAndCircle(pos.lat, pos.lng, false);
+    });
+
+    // Live-update radius circle when typing
+    radiusInput.addEventListener('input', () => {
+        const r = parseFloat(radiusInput.value);
+        if (!isNaN(r) && r > 0) {
+            geofenceCircle.setRadius(r);
+        }
+    });
+
+    // Live-update marker when typing lat/lng manually
+    [latInput, lngInput].forEach((input) => {
+        input.addEventListener('change', () => {
+            const lat = parseFloat(latInput.value);
+            const lng = parseFloat(lngInput.value);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                updatePinAndCircle(lat, lng, true);
+            }
+        });
+    });
+
+    // Snap to preset venue when selected
+    venueSelect.addEventListener('change', () => {
+        const venue = venuesData[venueSelect.value];
+        if (venue) {
+            radiusInput.value = venue.radius;
+            geofenceCircle.setRadius(venue.radius);
+            updatePinAndCircle(venue.lat, venue.lng, true);
+        }
+    });
+
+    // Button to snap pin to teacher's live browser GPS
+    document.getElementById('useCurrentGpsBtn').addEventListener('click', () => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                venueSelect.value = '';
+                updatePinAndCircle(pos.coords.latitude, pos.coords.longitude, true);
+            },
+            () => {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    venueSelect.value = '';
+                    updatePinAndCircle(pos.coords.latitude, pos.coords.longitude, true);
+                }, null, { enableHighAccuracy: false, timeout: 15000 });
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
+        );
+    });
+</script>
+{% endblock %}

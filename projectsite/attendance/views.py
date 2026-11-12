@@ -1,6 +1,7 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
-from .models import Session, AttendanceRecord
+from .models import Session, AttendanceRecord, Venue
+from .forms import SessionCreateForm
 
 
 def student_checkin_view(request):
@@ -38,4 +39,32 @@ def teacher_dashboard_view(request):
         'sessions': sessions,
         'selected_session': selected_session,
         'records': records,
+    })
+
+
+def session_create_view(request):
+    if request.method == 'POST':
+        form = SessionCreateForm(request.POST)
+        if form.is_valid():
+            session = form.save()
+            return redirect(f"/dashboard/?session={session.id}")
+    else:
+        form = SessionCreateForm(initial={
+            'center_lat': 9.776400,
+            'center_lng': 118.734000,
+            'radius_m': 50,
+        })
+
+    venues_data = {
+        str(v.id): {
+            'lat': v.latitude,
+            'lng': v.longitude,
+            'radius': v.default_radius_m,
+        }
+        for v in Venue.objects.all()
+    }
+
+    return render(request, 'attendance/session_create.html', {
+        'form': form,
+        'venues_data': venues_data,
     })

@@ -4,4 +4,5 @@ from . import views
 urlpatterns = [
     path('', views.student_checkin_view, name='student-checkin'),
     path('dashboard/', views.teacher_dashboard_view, name='teacher-dashboard'),
+    path('dashboard/sessions/create/', views.session_create_view, name='session-create'),
 ]
