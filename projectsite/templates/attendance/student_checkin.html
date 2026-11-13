@@ -1,74 +1,88 @@
 {% extends 'base.html' %}
-{% block title %}Student GPS Check-In | GeoAttend{% endblock %}
+{% block title %}Student Check-In | GeoAttend{% endblock %}
 
 {% block content %}
 <div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-primary text-white">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Student Attendance Check-In</h5>
+                <span class="badge bg-light text-primary">Live GPS Only</span>
             </div>
             <div class="card-body">
+                <div id="resultAlert" class="alert d-none" role="alert"></div>
+
                 <form id="checkinForm">
                     {% csrf_token %}
+
                     <div class="mb-3">
-                        <label for="sessionSelect" class="form-label fw-semibold">Active Class Session</label>
+                        <label class="form-label fw-semibold">Active Session</label>
                         <select id="sessionSelect" class="form-select" required>
-                            {% if active_sessions %}
-                                {% for s in active_sessions %}
-                                    <option value="{{ s.id }}"
-                                            data-lat="{{ s.center_lat }}"
-                                            data-lng="{{ s.center_lng }}"
-                                            data-radius="{{ s.radius_m }}">
-                                        {{ s.course.code }} — {{ s.title }} (Ends {{ s.ends_at|date:"H:i" }})
-                                    </option>
-                                {% endfor %}
-                            {% else %}
-                                <option value="" disabled selected>No active sessions right now</option>
-                            {% endif %}
+                            {% for s in active_sessions %}
+                                <option value="{{ s.id }}"
+                                        data-lat="{{ s.center_lat }}"
+                                        data-lng="{{ s.center_lng }}"
+                                        data-radius="{{ s.radius_m }}">
+                                    {{ s.course.code }} — {{ s.title }} (ends {{ s.ends_at|date:"H:i" }})
+                                </option>
+                            {% empty %}
+                                <option value="">No active attendance sessions right now</option>
+                            {% endfor %}
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label for="studentIdInput" class="form-label fw-semibold">Student ID Number</label>
-                        <input type="text" id="studentIdInput" class="form-control" placeholder="e.g., 2023-8-0123" required>
+                        <label class="form-label fw-semibold">Student ID Number</label>
+                        {% if student_profile %}
+                            <input type="text" id="studentIdInput" class="form-control bg-light"
+                                   value="{{ student_profile.student_id }}" readonly required>
+                            <small class="text-success">Signed in as {{ student_profile.firstname }} {{ student_profile.lastname }}</small>
+                        {% else %}
+                            <input type="text" id="studentIdInput" class="form-control" placeholder="e.g., 2023-8-0123" required>
+                        {% endif %}
                     </div>
 
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label small text-muted">Latitude</label>
-                            <input type="text" id="latInput" class="form-control bg-light" readonly required>
+                    <!-- Read-only status display (no editable inputs) -->
+                    <div class="p-3 mb-3 rounded bg-light border">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-semibold text-secondary">Live GPS Signal</span>
+                            <span id="gpsStatusBadge" class="badge bg-warning text-dark">Acquiring GPS...</span>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label small text-muted">Longitude</label>
-                            <input type="text" id="lngInput" class="form-control bg-light" readonly required>
+                        <div id="liveCoordsDisplay" class="font-monospace small text-muted">
+                            Waiting for hardware location lock...
                         </div>
                     </div>
 
-                    <div class="d-flex gap-2">
-                        <button type="button" id="locateBtn" class="btn btn-outline-secondary w-50">
-                            Refresh GPS
-                        </button>
-                        <button type="submit" id="submitBtn" class="btn btn-primary w-50" {% if not active_sessions %}disabled{% endif %}>
-                            Check In Now
-                        </button>
-                    </div>
+                    <button type="submit" id="checkinBtn" class="btn btn-primary w-100 py-2 fw-semibold" disabled>
+                        Waiting for Live GPS...
+                    </button>
                 </form>
 
-                <div id="resultAlert" class="alert mt-3 d-none" role="alert"></div>
+                {% if upcoming_sessions %}
+                <hr class="my-4">
+                <h6 class="text-muted fw-semibold">Upcoming Sessions</h6>
+                <ul class="list-group list-group-flush small">
+                    {% for s in upcoming_sessions %}
+                    <li class="list-group-item px-0 d-flex justify-content-between">
+                        <span><strong>{{ s.course.code }}</strong> — {{ s.title }}</span>
+                        <span class="text-muted">{{ s.starts_at|date:"M d, H:i" }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <div class="col-lg-6">
-        <div class="card shadow-sm border-0">
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
             <div class="card-header bg-white">
                 <h6 class="mb-0 fw-semibold">Live Geofence Map</h6>
             </div>
             <div class="card-body">
-                <div id="map"></div>
+                <div id="map" style="height: 380px;"></div>
                 <small class="text-muted d-block mt-2">
-                    Blue circle = Allowed classroom geofence radius. Red pin = Your detected GPS location.
+                    Blue circle = Allowed classroom geofence radius. Pin = Your live tracked GPS position.
                 </small>
             </div>
         </div>
@@ -78,124 +92,163 @@
 
 {% block extra_js %}
 <script>
+(() => {
+    // Private closure state — not exposed on window or editable DOM inputs
+    let liveCoords = null;
+
+    function getDeviceId() {
+        let deviceId = localStorage.getItem('geoattend_device_id');
+        if (!deviceId) {
+            deviceId = (crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+            localStorage.setItem('geoattend_device_id', deviceId);
+        }
+        return deviceId;
+    }
+
     const sessionSelect = document.getElementById('sessionSelect');
-    const latInput = document.getElementById('latInput');
-    const lngInput = document.getElementById('lngInput');
+    const studentIdInput = document.getElementById('studentIdInput');
+    const gpsStatusBadge = document.getElementById('gpsStatusBadge');
+    const liveCoordsDisplay = document.getElementById('liveCoordsDisplay');
+    const checkinBtn = document.getElementById('checkinBtn');
     const resultAlert = document.getElementById('resultAlert');
 
-    // Initialize Leaflet Map (default centered on Puerto Princesa / PSU area)
-    const map = L.map('map').setView([9.7764, 118.7340], 17);
+    const map = L.map('map').setView([9.776400, 118.734000], 17);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri',
         maxNativeZoom: 17,
         maxZoom: 20
     }).addTo(map);
+
     let geofenceCircle = null;
     let studentMarker = null;
 
     function drawSessionGeofence() {
-        const selected = sessionSelect.options[sessionSelect.selectedIndex];
-        if (!selected || !selected.dataset.lat) return;
+        if (!sessionSelect) return;
+        const opt = sessionSelect.options[sessionSelect.selectedIndex];
+        if (!opt || !opt.dataset.lat) return;
 
-        const cLat = parseFloat(selected.dataset.lat);
-        const cLng = parseFloat(selected.dataset.lng);
-        const radius = parseFloat(selected.dataset.radius);
+        const lat = parseFloat(opt.dataset.lat);
+        const lng = parseFloat(opt.dataset.lng);
+        const radius = parseFloat(opt.dataset.radius);
 
         if (geofenceCircle) map.removeLayer(geofenceCircle);
-        geofenceCircle = L.circle([cLat, cLng], {
+        geofenceCircle = L.circle([lat, lng], {
             color: '#0d6efd',
             fillColor: '#0d6efd',
-            fillOpacity: 0.15,
+            fillOpacity: 0.2,
             radius: radius
         }).addTo(map);
 
-        map.setView([cLat, cLng], 18);
+        if (liveCoords) {
+            const bounds = L.latLngBounds([geofenceCircle.getLatLng(), [liveCoords.lat, liveCoords.lng]]);
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+        } else {
+            map.setView([lat, lng], 18);
+        }
     }
 
-    function handlePositionSuccess(pos) {
-        const lat = pos.coords.latitude.toFixed(6);
-        const lng = pos.coords.longitude.toFixed(6);
-        latInput.value = lat;
-        lngInput.value = lng;
-        resultAlert.classList.add('d-none');
+    function onLivePosition(pos) {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        const accuracy = Math.round(pos.coords.accuracy);
 
-        if (studentMarker) map.removeLayer(studentMarker);
-        studentMarker = L.marker([lat, lng]).addTo(map).bindPopup('Your Location').openPopup();
+        liveCoords = { lat, lng, accuracy, timestamp: pos.timestamp };
+
+        gpsStatusBadge.className = 'badge bg-success';
+        gpsStatusBadge.textContent = `Live Locked (±${accuracy}m)`;
+        liveCoordsDisplay.textContent = `${lat}, ${lng}`;
+
+        if (sessionSelect && sessionSelect.value) {
+            checkinBtn.disabled = false;
+            checkinBtn.textContent = 'Check In Now';
+        } else {
+            checkinBtn.disabled = true;
+            checkinBtn.textContent = 'No Active Session Available';
+        }
+
+        if (studentMarker) {
+            studentMarker.setLatLng([lat, lng]);
+        } else {
+            studentMarker = L.marker([lat, lng]).addTo(map).bindPopup('Your Live Location').openPopup();
+        }
 
         if (geofenceCircle) {
             const bounds = L.latLngBounds([geofenceCircle.getLatLng(), [lat, lng]]);
             map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
         }
     }
-    function detectLocation() {
-        if (!navigator.geolocation) {
-            showAlert('danger', 'Geolocation is not supported by your browser.');
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            handlePositionSuccess,
-            () => {
-                // Fallback for desktop PCs without hardware GPS chips
-                navigator.geolocation.getCurrentPosition(
-                    handlePositionSuccess,
-                    (err) => {
-                        showAlert('warning', `GPS Error (${err.code}): ${err.message}. Check Windows Location Services or use DevTools Sensors.`);
-                    },
-                    { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
-                );
-            },
-            { enableHighAccuracy: true, timeout: 5000 }
-        );
+
+    function onPositionError(err) {
+        liveCoords = null;
+        checkinBtn.disabled = true;
+        checkinBtn.textContent = 'GPS Required to Check In';
+        gpsStatusBadge.className = 'badge bg-danger';
+        gpsStatusBadge.textContent = 'GPS Unavailable';
+        liveCoordsDisplay.textContent = err.message || 'Enable browser location permission.';
     }
 
-    function showAlert(type, message) {
-        resultAlert.className = `alert alert-${type} mt-3`;
-        resultAlert.textContent = message;
-        resultAlert.classList.remove('d-none');
+    // Continuous live tracking (maximumAge: 0 disables stale cached coordinates)
+    if ('geolocation' in navigator) {
+        navigator.geolocation.watchPosition(onLivePosition, onPositionError, {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 15000
+        });
+    } else {
+        onPositionError({ message: 'Geolocation not supported by this browser.' });
     }
 
-    sessionSelect.addEventListener('change', drawSessionGeofence);
-    document.getElementById('locateBtn').addEventListener('click', detectLocation);
+    if (sessionSelect) {
+        sessionSelect.addEventListener('change', drawSessionGeofence);
+        drawSessionGeofence();
+    }
 
     document.getElementById('checkinForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (!liveCoords || !sessionSelect || !sessionSelect.value) return;
+
+        checkinBtn.disabled = true;
+        checkinBtn.textContent = 'Verifying Live Location...';
+
         const sessionId = sessionSelect.value;
-        const studentId = document.getElementById('studentIdInput').value.trim();
-        const lat = parseFloat(latInput.value);
-        const lng = parseFloat(lngInput.value);
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-        if (!sessionId || isNaN(lat) || isNaN(lng)) {
-            showAlert('warning', 'Please wait for GPS coordinates before checking in.');
-            return;
-        }
-
         try {
-            const response = await fetch(`/api/sessions/${sessionId}/checkin/`, {
+            const res = await fetch(`/api/sessions/${sessionId}/checkin/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
-                body: JSON.stringify({ student_id: studentId, lat: lat, lng: lng })
+                body: JSON.stringify({
+                    student_id: studentIdInput.value.trim(),
+                    lat: liveCoords.lat,
+                    lng: liveCoords.lng,
+                    accuracy_m: liveCoords.accuracy,
+                    device_id: getDeviceId()
+                })
             });
 
-            const data = await response.json();
+            const data = await res.json();
+            resultAlert.classList.remove('d-none', 'alert-success', 'alert-warning', 'alert-danger');
 
-            if (response.ok) {
-                showAlert('success', `Checked in as ${data.status.toUpperCase()}! Distance: ${data.distance_m}m.`);
-            } else if (data.status === 'rejected') {
-                showAlert('danger', `Check-in REJECTED: You are ${data.distance_m}m away (outside allowed radius).`);
+            if (res.ok) {
+                resultAlert.classList.add(data.status === 'present' ? 'alert-success' : 'alert-warning');
+                const label = data.status ? data.status.toUpperCase() : 'RECORDED';
+                resultAlert.innerHTML = `<strong>Check-In ${label}!</strong><br>Distance from room center: ${data.distance_m}m`;
             } else {
-                showAlert('danger', data.detail || 'Check-in failed.');
+                resultAlert.classList.add('alert-danger');
+                const errorMsg = data.detail || data.accuracy_m?.[0] || data.student_id?.[0] || 'Invalid submission.';
+                resultAlert.innerHTML = `<strong>Check-In Failed:</strong> ${errorMsg}`;
             }
-        } catch (error) {
-            showAlert('danger', 'Network error while submitting check-in.');
+        } catch (err) {
+            resultAlert.classList.remove('d-none');
+            resultAlert.classList.add('alert-danger');
+            resultAlert.textContent = 'Network error while submitting attendance.';
+        } finally {
+            checkinBtn.disabled = false;
+            checkinBtn.textContent = 'Check In Now';
         }
     });
-
-    // Run on load
-    drawSessionGeofence();
-    detectLocation();
+})();
 </script>
 {% endblock %}

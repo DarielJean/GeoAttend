@@ -1,39 +1,62 @@
-from django.shortcuts import render, get_object_or_404, redirect
+import json
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import Session, AttendanceRecord, Venue
+from .models import Course, Session, AttendanceRecord, Venue
 from .forms import SessionCreateForm
 
 
+def is_teacher(user):
+    return user.is_authenticated and (user.is_staff or user.taught_courses.exists())
+
+
 def student_checkin_view(request):
+    if is_teacher(request.user) and request.GET.get('mode') != 'student':
+        return redirect('teacher-dashboard')
+
     now = timezone.now()
-    active_sessions = Session.objects.select_related('course', 'venue').filter(
-        starts_at__lte=now,
-        ends_at__gte=now
-    )
-    upcoming_sessions = Session.objects.select_related('course', 'venue').filter(
+    student_profile = getattr(request.user, 'student_profile', None) if request.user.is_authenticated else None
+
+    active_sessions = Session.objects.filter(
+        starts_at__lte=now, ends_at__gte=now
+    ).select_related('course', 'venue')
+
+    if student_profile:
+        active_sessions = active_sessions.filter(course__enrollments__student=student_profile)
+
+    upcoming_sessions = Session.objects.filter(
         starts_at__gt=now
-    )[:5]
+    ).select_related('course', 'venue')[:5]
 
     return render(request, 'attendance/student_checkin.html', {
         'active_sessions': active_sessions,
         'upcoming_sessions': upcoming_sessions,
+        'student_profile': student_profile,
     })
 
 
+@login_required
 def teacher_dashboard_view(request):
+    if not is_teacher(request.user):
+        messages.error(request, 'Access denied: Teacher account required.')
+        return redirect('student-checkin')
+
     sessions = Session.objects.select_related('course', 'venue').all()
+    if not request.user.is_superuser:
+        sessions = sessions.filter(course__teacher=request.user)
+
     selected_session_id = request.GET.get('session')
+    selected_session = None
+    records = AttendanceRecord.objects.none()
 
     if selected_session_id:
-        selected_session = get_object_or_404(Session, id=selected_session_id)
-    else:
+        selected_session = sessions.filter(id=selected_session_id).first()
+    elif sessions.exists():
         selected_session = sessions.first()
 
-    records = []
     if selected_session:
-        records = AttendanceRecord.objects.select_related('student').filter(
-            session=selected_session
-        )
+        records = AttendanceRecord.objects.filter(session=selected_session).select_related('student')
 
     return render(request, 'attendance/teacher_dashboard.html', {
         'sessions': sessions,
@@ -42,28 +65,22 @@ def teacher_dashboard_view(request):
     })
 
 
+@login_required
 def session_create_view(request):
-    if request.method == 'POST':
-        form = SessionCreateForm(request.POST)
-        if form.is_valid():
-            session = form.save()
-            return redirect(f"/dashboard/?session={session.id}")
-    else:
-        form = SessionCreateForm(initial={
-            'center_lat': 9.776400,
-            'center_lng': 118.734000,
-            'radius_m': 50,
-        })
+    if not is_teacher(request.user):
+        messages.error(request, 'Access denied: Teacher account required.')
+        return redirect('student-checkin')
+
+    form = SessionCreateForm(request.POST or None, user=request.user)
+    if request.method == 'POST' and form.is_valid():
+        session = form.save()
+        messages.success(request, f'Session "{session.title}" created and active.')
+        return redirect(f'/dashboard/?session={session.id}')
 
     venues_data = {
-        str(v.id): {
-            'lat': v.latitude,
-            'lng': v.longitude,
-            'radius': v.default_radius_m,
-        }
+        str(v.id): {'lat': v.latitude, 'lng': v.longitude, 'radius': v.default_radius_m}
         for v in Venue.objects.all()
     }
-
     return render(request, 'attendance/session_create.html', {
         'form': form,
         'venues_data': venues_data,

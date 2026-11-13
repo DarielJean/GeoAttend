@@ -1,5 +1,5 @@
 from django import forms
-from .models import Session
+from .models import Session, Course
 
 
 class SessionCreateForm(forms.ModelForm):
@@ -54,10 +54,10 @@ class SessionCreateForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.fields['venue'].empty_label = "Custom Map Pin (No Preset Venue)"
-        for field_name in ('starts_at', 'late_after', 'ends_at'):
-            self.fields[field_name].input_formats = ['%Y-%m-%dT%H:%M']
+        if user and not user.is_superuser:
+            self.fields['course'].queryset = Course.objects.filter(teacher=user)
 
     def clean(self):
         cleaned_data = super().clean()

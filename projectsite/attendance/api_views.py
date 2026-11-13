@@ -63,8 +63,12 @@ class SessionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        student_id = serializer.validated_data['student_id']
-        student = get_object_or_404(Student, student_id=student_id)
+        if request.user.is_authenticated and getattr(request.user, 'student_profile', None):
+            student = request.user.student_profile
+            student_id = student.student_id
+        else:
+            student_id = serializer.validated_data['student_id']
+            student = get_object_or_404(Student, student_id=student_id)
 
         # Verify student is enrolled in the session's course
         if not Enrollment.objects.filter(student=student, course=session.course).exists():
@@ -74,11 +78,21 @@ class SessionViewSet(viewsets.ModelViewSet):
             )
 
         # Prevent duplicate check-ins for the same session
+        # Prevent duplicate check-ins for the same session
         if AttendanceRecord.objects.filter(session=session, student=student).exists():
             return Response(
                 {'detail': 'Attendance has already been recorded for this session.'},
                 status=status.HTTP_409_CONFLICT
             )
+
+        # Prevent one phone/browser from checking in multiple students for the same session
+        device_id = serializer.validated_data.get('device_id', '').strip()
+        if device_id and AttendanceRecord.objects.filter(session=session, device_id=device_id).exclude(student=student).exists():
+            return Response(
+                {'detail': 'This device has already been used to check in another student for this session.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
 
         lat = serializer.validated_data['lat']
         lng = serializer.validated_data['lng']
@@ -94,6 +108,7 @@ class SessionViewSet(viewsets.ModelViewSet):
             lng=lng,
             distance_m=distance_m,
             status=checkin_status,
+            device_id=device_id,
         )
 
         response_data = AttendanceRecordSerializer(record).data

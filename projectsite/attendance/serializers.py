@@ -68,3 +68,21 @@ class CheckInRequestSerializer(serializers.Serializer):
     student_id = serializers.CharField(max_length=50)
     lat = serializers.FloatField(min_value=-90.0, max_value=90.0)
     lng = serializers.FloatField(min_value=-180.0, max_value=180.0)
+    accuracy_m = serializers.FloatField(required=False)
+    device_id = serializers.CharField(max_length=64, required=False, allow_blank=True, default='')
+
+    def validate_accuracy_m(self, value):
+        if value > 150:
+            raise serializers.ValidationError(
+                f"GPS signal accuracy too weak (±{int(value)}m). Move near a window or enable precise device location."
+            )
+        return value
+
+accuracy_m = serializers.FloatField(required=False, default=0)
+
+def validate_accuracy_m(self, value):
+    if value > 150:
+        raise serializers.ValidationError(
+            f"GPS signal accuracy too weak (±{int(value)}m). Move near a window or enable precise device location."
+        )
+    return value

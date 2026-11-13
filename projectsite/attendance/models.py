@@ -105,6 +105,7 @@ class AttendanceRecord(BaseModel):
     lng = models.FloatField()
     distance_m = models.FloatField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    device_id = models.CharField(max_length=64, blank=True, default='')
     checked_in_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
