@@ -2,19 +2,32 @@
 {% block title %}Teacher Dashboard | GeoAttend{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <h3 class="mb-0 fw-bold">Teacher Attendance Dashboard</h3>
-    <form method="get" class="d-flex gap-2">
-        <select name="session" class="form-select" onchange="this.form.submit()">
-            {% for s in sessions %}
-                <option value="{{ s.id }}" {% if selected_session and s.id == selected_session.id %}selected{% endif %}>
-                    {{ s.course.code }} — {{ s.title }} ({{ s.starts_at|date:"M d, H:i" }})
-                </option>
-            {% empty %}
-                <option disabled>No sessions created yet</option>
-            {% endfor %}
-        </select>
-    </form>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <form method="get" class="d-flex">
+            <select name="session" class="form-select" onchange="this.form.submit()">
+                {% for s in sessions %}
+                    <option value="{{ s.id }}" {% if selected_session and s.id == selected_session.id %}selected{% endif %}>
+                        {{ s.course.code }} — {{ s.title }} ({{ s.starts_at|date:"M d, H:i" }})
+                    </option>
+                {% empty %}
+                    <option disabled>No sessions created yet</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% if selected_session %}
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#qrModal">
+                Show Check-In QR
+            </button>
+            <a href="{% url 'export-attendance-csv' selected_session.id %}" class="btn btn-outline-success">
+                Export CSV
+            </a>
+        {% endif %}
+        <a href="{% url 'session-create' %}" class="btn btn-primary fw-semibold">
+            + New Session
+        </a>
+    </div>
 </div>
 
 {% if selected_session %}
@@ -46,7 +59,10 @@
 </div>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white fw-semibold">Attendance Log</div>
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">Attendance Log</span>
+        <small class="text-muted">Session window: {{ selected_session.starts_at|date:"M d, H:i" }} – {{ selected_session.ends_at|date:"H:i" }}</small>
+    </div>
     <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
@@ -73,7 +89,7 @@
                             <span class="badge bg-danger">Rejected</span>
                         {% endif %}
                     </td>
-                    <td>{{ r.distance_m }} m</td>
+                    <td>{{ r.distance_m|floatformat:1 }} m</td>
                     <td class="small text-muted">{{ r.lat }}, {{ r.lng }}</td>
                     <td>{{ r.checked_in_at|date:"M d, Y H:i:s" }}</td>
                 </tr>
@@ -86,7 +102,62 @@
         </table>
     </div>
 </div>
+
+<!-- Check-In QR Code Modal -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="qrModalLabel">{{ selected_session.course.code }} — Student Check-In QR</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <div id="qrcodeContainer" class="d-inline-block p-3 bg-white border rounded mb-3"></div>
+                <p class="small text-muted mb-2">Students can scan this QR code or open the link below:</p>
+                <div class="input-group input-group-sm">
+                    <input type="text" id="checkinLinkInput" class="form-control" value="{{ checkin_url }}" readonly>
+                    <button class="btn btn-outline-secondary" type="button" id="copyLinkBtn">Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% else %}
-<div class="alert alert-info">Create a Department, Course, Venue, and active Session in Django Admin to begin tracking attendance.</div>
+<div class="alert alert-info d-flex justify-content-between align-items-center">
+    <span>No sessions created yet. Click <strong>+ New Session</strong> to open attendance for a class.</span>
+    <a href="{% url 'session-create' %}" class="btn btn-sm btn-primary">+ New Session</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if selected_session %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(() => {
+    const qrContainer = document.getElementById('qrcodeContainer');
+    const checkinUrl = "{{ checkin_url|escapejs }}";
+    if (qrContainer && window.QRCode) {
+        new QRCode(qrContainer, {
+            text: checkinUrl,
+            width: 220,
+            height: 220,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    }
+
+    const copyBtn = document.getElementById('copyLinkBtn');
+    const linkInput = document.getElementById('checkinLinkInput');
+    if (copyBtn && linkInput) {
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(linkInput.value);
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        });
+    }
+})();
+</script>
 {% endif %}
 {% endblock %}

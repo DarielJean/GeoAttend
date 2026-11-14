@@ -1,9 +1,11 @@
+import csv
 import json
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.http import HttpResponse
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
-from .models import Course, Session, AttendanceRecord, Venue
+from .models import Course, Session, AttendanceRecord, Enrollment, Venue
 from .forms import SessionCreateForm
 
 
@@ -58,11 +60,58 @@ def teacher_dashboard_view(request):
     if selected_session:
         records = AttendanceRecord.objects.filter(session=selected_session).select_related('student')
 
+    checkin_url = request.build_absolute_uri('/?mode=student')
+
     return render(request, 'attendance/teacher_dashboard.html', {
         'sessions': sessions,
         'selected_session': selected_session,
         'records': records,
+        'checkin_url': checkin_url,
     })
+
+
+@login_required
+def export_attendance_csv(request, session_id):
+    if not is_teacher(request.user):
+        messages.error(request, 'Access denied: Teacher account required.')
+        return redirect('student-checkin')
+
+    sessions = Session.objects.select_related('course')
+    if not request.user.is_superuser:
+        sessions = sessions.filter(course__teacher=request.user)
+
+    session = get_object_or_404(sessions, id=session_id)
+    records_by_student = {
+        r.student_id: r
+        for r in AttendanceRecord.objects.filter(session=session).select_related('student')
+    }
+    enrollments = Enrollment.objects.filter(course=session.course).select_related('student').order_by('student__lastname', 'student__firstname')
+
+    filename = f"{session.course.code}_{session.starts_at.strftime('%Y%m%d_%H%M')}_attendance.csv"
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Student ID', 'Last Name', 'First Name', 'Status', 'Distance (m)', 'Latitude', 'Longitude', 'Checked In At'])
+
+    for enrollment in enrollments:
+        s = enrollment.student
+        rec = records_by_student.get(s.id)
+        if rec:
+            writer.writerow([
+                s.student_id,
+                s.lastname,
+                s.firstname,
+                rec.get_status_display(),
+                round(rec.distance_m, 2),
+                rec.lat,
+                rec.lng,
+                timezone.localtime(rec.checked_in_at).strftime('%Y-%m-%d %H:%M:%S'),
+            ])
+        else:
+            writer.writerow([s.student_id, s.lastname, s.firstname, 'Absent', '', '', '', ''])
+
+    return response
 
 
 @login_required
