@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAdminUser, AllowAny
 from rest_framework.response import Response
 
 from .models import (
@@ -19,33 +20,39 @@ from .services import calculate_haversine_distance, evaluate_checkin_status
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
+    permission_classes = [IsAdminUser]
 
 
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.select_related('department', 'teacher').all()
     serializer_class = CourseSerializer
+    permission_classes = [IsAdminUser]
 
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.select_related('user').all()
     serializer_class = StudentSerializer
+    permission_classes = [IsAdminUser]
 
 
 class EnrollmentViewSet(viewsets.ModelViewSet):
     queryset = Enrollment.objects.select_related('student', 'course').all()
     serializer_class = EnrollmentSerializer
+    permission_classes = [IsAdminUser]
 
 
 class VenueViewSet(viewsets.ModelViewSet):
     queryset = Venue.objects.all()
     serializer_class = VenueSerializer
+    permission_classes = [IsAdminUser]
 
 
 class SessionViewSet(viewsets.ModelViewSet):
     queryset = Session.objects.select_related('course', 'venue').all()
     serializer_class = SessionSerializer
+    permission_classes = [IsAdminUser]
 
-    @action(detail=True, methods=['post'], url_path='checkin')
+    @action(detail=True, methods=['post'], url_path='checkin', permission_classes=[AllowAny])
     def checkin(self, request, pk=None):
         session = self.get_object()
         serializer = CheckInRequestSerializer(data=request.data)
@@ -70,29 +77,24 @@ class SessionViewSet(viewsets.ModelViewSet):
             student_id = serializer.validated_data['student_id']
             student = get_object_or_404(Student, student_id=student_id)
 
-        # Verify student is enrolled in the session's course
         if not Enrollment.objects.filter(student=student, course=session.course).exists():
             return Response(
                 {'detail': f'Student {student_id} is not enrolled in {session.course.code}.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Prevent duplicate check-ins for the same session
-        # Prevent duplicate check-ins for the same session
         if AttendanceRecord.objects.filter(session=session, student=student).exists():
             return Response(
                 {'detail': 'Attendance has already been recorded for this session.'},
                 status=status.HTTP_409_CONFLICT
             )
 
-        # Prevent one phone/browser from checking in multiple students for the same session
         device_id = serializer.validated_data.get('device_id', '').strip()
         if device_id and AttendanceRecord.objects.filter(session=session, device_id=device_id).exclude(student=student).exists():
             return Response(
                 {'detail': 'This device has already been used to check in another student for this session.'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
 
         lat = serializer.validated_data['lat']
         lng = serializer.validated_data['lng']
@@ -123,3 +125,4 @@ class SessionViewSet(viewsets.ModelViewSet):
 class AttendanceRecordViewSet(viewsets.ModelViewSet):
     queryset = AttendanceRecord.objects.select_related('session', 'student').all()
     serializer_class = AttendanceRecordSerializer
+    permission_classes = [IsAdminUser]
