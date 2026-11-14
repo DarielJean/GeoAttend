@@ -4,25 +4,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}GeoAttend{% endblock %}</title>
+    <title>{% block title %}GeoAttend | PSU Attendance{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { background-color: #f4f6f9; }
-        .navbar-brand { font-weight: 700; letter-spacing: 0.5px; }
-        #map { height: 320px; border-radius: 0.5rem; z-index: 1; }
+        :root {
+            --psu-green: #1A361F;
+            --psu-green-mid: #274e2e;
+            --psu-green-light: #35693e;
+            --psu-green-soft: #eaf2ec;
+            --psu-green-border: rgba(26, 54, 31, 0.22);
+            --psu-gradient: linear-gradient(135deg, #1A361F 0%, #2c5934 100%);
+            --psu-gradient-hover: linear-gradient(135deg, #132817 0%, #224629 100%);
+            --ink-primary: #18181b;
+            --ink-secondary: #52525b;
+            --ink-muted: #71717a;
+            --surface-bg: #f4f6f4;
+            --surface-card: #ffffff;
+            --border-subtle: rgba(24, 24, 27, 0.08);
+            --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.04), 0 8px 24px -6px rgba(26, 54, 31, 0.08);
+            --shadow-green: 0 8px 20px -6px rgba(26, 54, 31, 0.42);
+            --shadow-green-hover: 0 12px 24px -6px rgba(26, 54, 31, 0.52);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--surface-bg);
+            color: var(--ink-primary);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .font-monospace, code {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+
+        /* Navbar in #1A361F with High-Contrast Light Typography */
+        .psu-navbar {
+            background-color: var(--psu-green);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 16px rgba(26, 54, 31, 0.18);
+        }
+
+        .psu-navbar .navbar-brand {
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #ffffff !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+        }
+
+        .brand-mark {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .psu-navbar .nav-link {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.85) !important;
+            padding: 0.45rem 0.85rem !important;
+            border-radius: 8px;
+            transition: color 0.15s ease, background-color 0.15s ease;
+        }
+
+        .psu-navbar .nav-link:hover,
+        .psu-navbar .nav-link:focus {
+            color: #ffffff !important;
+            background-color: rgba(255, 255, 255, 0.14);
+        }
+
+        .psu-navbar .navbar-toggler {
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .psu-navbar .navbar-toggler-icon {
+            filter: invert(1);
+        }
+
+        .user-pill {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+        }
+
+        /* Cards & Elevation */
+        .card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-subtle) !important;
+            border-radius: 14px;
+            box-shadow: var(--shadow-card) !important;
+            overflow: hidden;
+        }
+
+        .card-header {
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 0.95rem 1.25rem;
+        }
+
+        .card-header.bg-primary {
+            background: var(--psu-gradient) !important;
+            border-bottom: none;
+        }
+
+        .card-header.bg-primary .badge.text-primary {
+            color: var(--psu-green) !important;
+            font-weight: 700;
+        }
+
+        /* Primary Green Gradient Buttons */
+        .btn-primary {
+            background: var(--psu-gradient);
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            color: #ffffff;
+            box-shadow: var(--shadow-green);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+
+        .btn-primary:hover:not(:disabled),
+        .btn-primary:focus:not(:disabled) {
+            background: var(--psu-gradient-hover);
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-green-hover);
+        }
+
+        .btn-primary:disabled {
+            background: #cbd5ce;
+            color: #64748b;
+            box-shadow: none;
+        }
+
+        .btn-outline-primary {
+            color: var(--psu-green);
+            border-color: var(--psu-green-border);
+            background-color: #ffffff;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .btn-outline-primary:hover {
+            background: var(--psu-green-soft);
+            color: var(--psu-green);
+            border-color: var(--psu-green);
+        }
+
+        /* Form Inputs */
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 1px solid rgba(24, 24, 27, 0.15);
+            padding: 0.58rem 0.85rem;
+            font-size: 0.94rem;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--psu-green);
+            box-shadow: 0 0 0 3.5px rgba(26, 54, 31, 0.18);
+        }
+
+        /* Dashboard Stat Cards & Tables */
+        .stat-card {
+            border-left: 3.5px solid var(--psu-green) !important;
+        }
+
+        .table thead th {
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-muted);
+            font-weight: 700;
+            background-color: #f8faf8;
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 0.8rem 1rem;
+        }
+
+        .table tbody td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid rgba(24, 24, 27, 0.05);
+        }
+
+        #map {
+            height: 340px;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+            z-index: 1;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
+    <nav class="navbar navbar-expand-lg psu-navbar sticky-top mb-4">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'student-checkin' %}">📍 GeoAttend</a>
+            <a class="navbar-brand" href="{% url 'student-checkin' %}">
+                <span class="brand-mark">G</span>
+                <span>GeoAttend</span>
+                <span class="badge rounded-pill ms-1" style="background: rgba(255,255,255,0.18); color: #ffffff; font-size: 0.7rem; font-weight: 700;">PSU</span>
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'student-checkin' %}?mode=student">Student Check-In</a>
                     </li>
@@ -41,17 +241,17 @@
                         </li>
                         {% endif %}
                         <li class="nav-item ms-lg-2">
-                            <span class="badge bg-secondary">{{ user.username }}</span>
+                            <span class="user-pill">{{ user.username }}</span>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item ms-lg-1">
                             <form method="post" action="{% url 'logout' %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-warning">Logout</button>
+                                <button type="submit" class="btn btn-sm btn-light rounded-pill px-3 fw-semibold" style="color: #1A361F;">Logout</button>
                             </form>
                         </li>
                     {% else %}
                         <li class="nav-item ms-lg-2">
-                            <a href="{% url 'login' %}" class="btn btn-sm btn-light">Sign In</a>
+                            <a href="{% url 'login' %}" class="btn btn-sm btn-light rounded-pill px-3 fw-bold" style="color: #1A361F;">Faculty Sign In</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -62,7 +262,7 @@
     <main class="container pb-5">
         {% if messages %}
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show rounded-3 shadow-sm" role="alert">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
