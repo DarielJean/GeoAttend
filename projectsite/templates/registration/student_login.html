@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Student Sign In - GeoAttend{% endblock %}
+
+{% block content %}
+
+<div style="
+    min-height: calc(100vh - 80px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 30px;
+">
+
+    <div style="
+        width: 495px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.10);
+        overflow: hidden;
+    ">
+
+        <!-- STUDENT LOGIN HEADER -->
+        <div style="
+            background: #194d29;
+            color: white;
+            padding: 18px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        ">
+            STUDENT SIGN IN
+        </div>
+
+        <div style="padding: 28px;">
+
+            {% if error %}
+                <div style="
+                    background: #f8d7da;
+                    color: #842029;
+                    padding: 10px 14px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                ">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- USERNAME -->
+                <div style="margin-bottom: 18px;">
+                    <label for="username" style="
+                        display: block;
+                        font-weight: 600;
+                        margin-bottom: 8px;
+                    ">
+                        Student Username
+                    </label>
+
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        required
+                        style="
+                            width: 100%;
+                            box-sizing: border-box;
+                            padding: 13px;
+                            border: 1px solid #ddd;
+                            border-radius: 10px;
+                            font-size: 16px;
+                        "
+                    >
+                </div>
+
+                <!-- PASSWORD -->
+                <div style="margin-bottom: 22px;">
+                    <label for="password" style="
+                        display: block;
+                        font-weight: 600;
+                        margin-bottom: 8px;
+                    ">
+                        Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        style="
+                            width: 100%;
+                            box-sizing: border-box;
+                            padding: 13px;
+                            border: 1px solid #ddd;
+                            border-radius: 10px;
+                            font-size: 16px;
+                        "
+                    >
+                </div>
+
+                <!-- SIGN IN BUTTON -->
+                <button type="submit" style="
+                    width: 100%;
+                    padding: 13px;
+                    background: #194d29;
+                    color: white;
+                    border: none;
+                    border-radius: 10px;
+                    font-size: 18px;
+                    font-weight: bold;
+                    cursor: pointer;
+                ">
+                    Student Sign In
+                </button>
+
+            </form>
+
+            <!-- FACULTY LOGIN LINK -->
+            <div style="
+                text-align: center;
+                margin-top: 20px;
+            ">
+                <a href="{% url 'login' %}" style="
+                    color: #194d29;
+                    text-decoration: none;
+                    font-weight: 600;
+                ">
+                    Faculty Sign In
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
