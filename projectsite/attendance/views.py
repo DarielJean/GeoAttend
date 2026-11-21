@@ -7,9 +7,17 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
-
-from .models import Course, Session, AttendanceRecord, Enrollment, Venue, Student
 from .forms import SessionCreateForm
+
+from .models import (
+    Department,
+    Course,
+    Session,
+    AttendanceRecord,
+    Enrollment,
+    Venue,
+    Student,
+)
 
 
 def is_teacher(user):
@@ -315,5 +323,198 @@ def session_create_view(request):
         {
             "form": form,
             "venues_data": venues_data,
+        },
+    )
+
+
+@login_required
+def admin_dashboard_view(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied: Administrator account required.")
+        return redirect("student-checkin")
+
+    students = Student.objects.all().select_related("user")
+    courses = Course.objects.all().select_related("department", "teacher")
+    sessions = Session.objects.all().select_related("course", "venue")
+    venues = Venue.objects.all()
+    departments = Department.objects.all()
+    attendance_records = AttendanceRecord.objects.all().select_related(
+        "student",
+        "session",
+        "session__course",
+    )
+
+    teachers = User.objects.filter(
+        is_staff=False,
+        is_superuser=False,
+    ).exclude(student_profile__isnull=False)
+
+    return render(
+        request,
+        "admin/admin_dashboard.html",
+        {
+            "students": students,
+            "courses": courses,
+            "sessions": sessions,
+            "venues": venues,
+            "departments": departments,
+            "attendance_records": attendance_records,
+            "teachers": teachers,
+        },
+    )
+
+
+@login_required
+def admin_teacher_create_view(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied: Administrator account required.")
+        return redirect("student-checkin")
+
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        firstname = request.POST.get("firstname", "").strip()
+        lastname = request.POST.get("lastname", "").strip()
+        email = request.POST.get("email", "").strip()
+        password = request.POST.get("password", "")
+
+        if not all([username, firstname, lastname, email, password]):
+            return render(
+                request,
+                "admin/teacher_form.html",
+                {"error": "Please fill in all fields."},
+            )
+
+        if User.objects.filter(username=username).exists():
+            return render(
+                request,
+                "admin/teacher_form.html",
+                {"error": "Username is already taken."},
+            )
+
+        if User.objects.filter(email=email).exists():
+            return render(
+                request,
+                "admin/teacher_form.html",
+                {"error": "Email is already registered."},
+            )
+
+        User.objects.create_user(
+            username=username,
+            first_name=firstname,
+            last_name=lastname,
+            email=email,
+            password=password,
+        )
+
+        messages.success(request, "Teacher account created successfully.")
+
+        return redirect("admin-dashboard")
+
+    return render(request, "admin/teacher_form.html")
+
+
+@login_required
+def admin_department_create_view(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied: Administrator account required.")
+        return redirect("student-checkin")
+
+    if request.method == "POST":
+        code = request.POST.get("code", "").strip()
+        name = request.POST.get("name", "").strip()
+
+        if not code or not name:
+            return render(
+                request,
+                "admin/department_form.html",
+                {"error": "Please fill in all fields."},
+            )
+
+        if Department.objects.filter(code=code).exists():
+            return render(
+                request,
+                "admin/department_form.html",
+                {"error": "Department code already exists."},
+            )
+
+        if Department.objects.filter(name=name).exists():
+            return render(
+                request,
+                "admin/department_form.html",
+                {"error": "Department name already exists."},
+            )
+
+        Department.objects.create(
+            code=code,
+            name=name,
+        )
+
+        messages.success(request, "Department created successfully.")
+
+        return redirect("admin-dashboard")
+
+    return render(request, "admin/department_form.html")
+
+
+@login_required
+def admin_course_create_view(request):
+    if not request.user.is_superuser:
+        messages.error(request, "Access denied: Administrator account required.")
+        return redirect("student-checkin")
+
+    departments = Department.objects.all()
+    teachers = User.objects.filter(
+        is_staff=False,
+        is_superuser=False,
+    ).exclude(student_profile__isnull=False)
+
+    if request.method == "POST":
+        code = request.POST.get("code", "").strip()
+        name = request.POST.get("name", "").strip()
+        department_id = request.POST.get("department")
+        teacher_id = request.POST.get("teacher")
+
+        if not all([code, name, department_id, teacher_id]):
+            return render(
+                request,
+                "admin/course_form.html",
+                {
+                    "error": "Please fill in all fields.",
+                    "departments": departments,
+                    "teachers": teachers,
+                },
+            )
+
+        if Course.objects.filter(code=code).exists():
+            return render(
+                request,
+                "admin/course_form.html",
+                {
+                    "error": "Course code already exists.",
+                    "departments": departments,
+                    "teachers": teachers,
+                },
+            )
+
+        department = get_object_or_404(Department, id=department_id)
+        teacher = get_object_or_404(User, id=teacher_id)
+
+        Course.objects.create(
+            code=code,
+            name=name,
+            department=department,
+            teacher=teacher,
+        )
+
+        messages.success(request, "Course created successfully.")
+
+        return redirect("admin-dashboard")
+
+    return render(
+        request,
+        "admin/course_form.html",
+        {
+            "departments": departments,
+            "teachers": teachers,
         },
     )

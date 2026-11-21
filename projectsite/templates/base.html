@@ -1,3 +1,4 @@
+
 {% load static %}
 
 <!DOCTYPE html>
@@ -83,7 +84,7 @@
             font-family: 'JetBrains Mono', monospace !important;
         }
 
-        /* Navbar in #1A361F with High-Contrast Light Typography */
+        /* NAVBAR */
 
         .psu-navbar {
             background-color: var(--psu-green);
@@ -159,7 +160,7 @@
             border-radius: 999px;
         }
 
-        /* Cards & Elevation */
+        /* CARDS */
 
         .card {
             background: var(--surface-card);
@@ -186,7 +187,7 @@
             font-weight: 700;
         }
 
-        /* Primary Green Gradient Buttons */
+        /* BUTTONS */
 
         .btn-primary {
             background: var(--psu-gradient);
@@ -234,7 +235,7 @@
             border-color: var(--psu-green);
         }
 
-        /* Form Inputs */
+        /* FORM INPUTS */
 
         .form-control,
         .form-select {
@@ -258,7 +259,7 @@
                 0 0 0 3.5px rgba(26, 54, 31, 0.18);
         }
 
-        /* Dashboard Stat Cards & Tables */
+        /* TABLES */
 
         .stat-card {
             border-left: 3.5px solid var(--psu-green) !important;
@@ -302,12 +303,16 @@
 
 <body>
 
+    <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg psu-navbar sticky-top mb-4">
 
         <div class="container">
 
-            <a class="navbar-brand" href="{% url 'student-checkin' %}">
-
+            <!-- BRAND -->
+            <a
+                class="navbar-brand"
+                href="{% url 'student-checkin' %}"
+            >
                 <span class="brand-mark">G</span>
 
                 <span>GeoAttend</span>
@@ -323,9 +328,9 @@
                 >
                     PSU
                 </span>
-
             </a>
 
+            <!-- MOBILE MENU -->
             <button
                 class="navbar-toggler"
                 type="button"
@@ -335,75 +340,54 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <div class="collapse navbar-collapse" id="navbarNav">
+            <!-- NAVIGATION -->
+            <div
+                class="collapse navbar-collapse"
+                id="navbarNav"
+            >
 
                 <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
 
                     <!-- STUDENT CHECK-IN -->
                     <li class="nav-item">
-
                         <a
                             class="nav-link"
                             href="{% url 'student-login' %}"
                         >
                             Student Check-In
                         </a>
+                    </li>
 
+                    <!-- TEACHER SIGN IN -->
+                    <li class="nav-item">
+                        <a
+                            class="nav-link"
+                            href="{% url 'login' %}"
+                        >
+                            Teacher Sign In
+                        </a>
+                    </li>
+
+                    <!-- ADMIN -->
+                    <li class="nav-item">
+                        <a
+                            class="nav-link"
+                            href="{% url 'admin-dashboard' %}"
+                        >
+                            Admin
+                        </a>
                     </li>
 
                     {% if user.is_authenticated %}
 
-                        {% if user.is_staff or user.taught_courses.exists %}
-
-                            <li class="nav-item">
-
-                                <a
-                                    class="nav-link"
-                                    href="{% url 'teacher-dashboard' %}"
-                                >
-                                    Teacher Dashboard
-                                </a>
-
-                            </li>
-
-                        {% endif %}
-
-                        {% if user.is_staff %}
-
-                            <li class="nav-item">
-
-                                <a
-                                    class="nav-link"
-                                    href="/api/"
-                                    target="_blank"
-                                >
-                                    REST API
-                                </a>
-
-                            </li>
-
-                            <li class="nav-item">
-
-                                <a
-                                    class="nav-link"
-                                    href="/admin/"
-                                    target="_blank"
-                                >
-                                    Admin
-                                </a>
-
-                            </li>
-
-                        {% endif %}
-
+                        <!-- USERNAME -->
                         <li class="nav-item ms-lg-2">
-
                             <span class="user-pill">
                                 {{ user.username }}
                             </span>
-
                         </li>
 
+                        <!-- LOGOUT -->
                         <li class="nav-item ms-lg-1">
 
                             <form
@@ -426,20 +410,6 @@
 
                         </li>
 
-                    {% else %}
-
-                        <li class="nav-item ms-lg-2">
-
-                            <a
-                                href="{% url 'login' %}"
-                                class="btn btn-sm btn-light rounded-pill px-3 fw-bold"
-                                style="color: #1A361F;"
-                            >
-                                Faculty Sign In
-                            </a>
-
-                        </li>
-
                     {% endif %}
 
                 </ul>
@@ -450,6 +420,7 @@
 
     </nav>
 
+    <!-- MAIN CONTENT -->
     <main class="container pb-5">
 
         {% if messages %}
@@ -479,10 +450,12 @@
 
     </main>
 
+    <!-- BOOTSTRAP -->
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
     ></script>
 
+    <!-- LEAFLET -->
     <script
         src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     ></script>

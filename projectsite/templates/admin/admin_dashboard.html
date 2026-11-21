@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Administrator Dashboard - GeoAttend</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7f5;
+            color: #222;
+        }
+
+        /* =========================
+           SIDEBAR
+        ========================= */
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 250px;
+            background: #194d29;
+            color: white;
+            padding: 25px 15px;
+            overflow-y: auto;
+        }
+
+        .brand {
+            padding: 0 15px 30px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 25px;
+            color: white;
+        }
+
+        .brand p {
+            margin: 5px 0 0;
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .nav-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            opacity: 0.6;
+            padding: 0 15px;
+            margin: 20px 0 8px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 13px 15px;
+            margin-bottom: 5px;
+            color: white;
+            text-decoration: none;
+            border-radius: 7px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-link:hover {
+            background: rgba(255,255,255,0.12);
+        }
+
+        .nav-link.active {
+            background: rgba(0,0,0,0.25);
+        }
+
+        .nav-icon {
+            width: 22px;
+            text-align: center;
+            font-size: 17px;
+        }
+
+        .create-teacher {
+            margin-top: 25px;
+            background: white;
+            color: #194d29 !important;
+            justify-content: center;
+        }
+
+        .create-teacher:hover {
+            background: #f0f0f0 !important;
+        }
+
+        /* =========================
+           MAIN CONTENT
+        ========================= */
+
+        .main {
+            margin-left: 250px;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            background: white;
+            padding: 22px 35px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .topbar h1 {
+            margin: 0;
+            color: #194d29;
+            font-size: 25px;
+        }
+
+        .topbar p {
+            margin: 5px 0 0;
+            color: #777;
+            font-size: 14px;
+        }
+
+        .admin-label {
+            color: #194d29;
+            font-weight: bold;
+        }
+
+        .content {
+            padding: 30px 35px;
+        }
+
+        /* =========================
+           DASHBOARD SUMMARY
+        ========================= */
+
+        #dashboard {
+            display: block;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 7px rgba(0,0,0,0.07);
+            border-left: 5px solid #194d29;
+        }
+
+        .summary-card .count {
+            font-size: 28px;
+            font-weight: bold;
+            color: #194d29;
+        }
+
+        .summary-card .label {
+            margin-top: 5px;
+            color: #666;
+            font-size: 13px;
+        }
+
+        /* =========================
+           SECTIONS
+        ========================= */
+
+        .dashboard-section {
+            display: none;
+        }
+
+        .table-section {
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            overflow: hidden;
+            box-shadow: 0 2px 7px rgba(0,0,0,0.07);
+        }
+
+        .table-header {
+            background: #194d29;
+            color: white;
+            padding: 18px 20px;
+        }
+
+        .table-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .action-area {
+            padding: 15px 20px;
+        }
+
+        .action-button {
+            display: inline-block;
+            background: #194d29;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .action-button:hover {
+            background: #123b20;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #eef3ef;
+            color: #194d29;
+            text-align: left;
+            padding: 13px 18px;
+            font-size: 14px;
+        }
+
+        td {
+            padding: 13px 18px;
+            border-top: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        tr:hover td {
+            background: #f8faf8;
+        }
+
+        .empty {
+            text-align: center;
+            color: #888;
+            padding: 25px;
+        }
+
+        /* =========================
+           FOOTER
+        ========================= */
+
+        .footer {
+            text-align: center;
+            color: #888;
+            font-size: 13px;
+            padding: 20px;
+        }
+
+        /* =========================
+           RESPONSIVE
+        ========================= */
+
+        @media (max-width: 1200px) {
+            .summary-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 800px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                height: auto;
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .content {
+                padding: 20px 15px;
+            }
+
+            .topbar {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- =========================
+         SIDEBAR
+    ========================= -->
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            <h1>GeoAttend</h1>
+            <p>PSU Attendance System</p>
+        </div>
+
+        <div class="nav-title">
+            Main
+        </div>
+
+        <a
+            href="javascript:void(0)"
+            class="nav-link active"
+            onclick="showSection('dashboard', this)"
+        >
+            <span class="nav-icon"> </span>
+            Dashboard
+        </a>
+
+        <div class="nav-title">
+            Management
+        </div>
+
+        <a
+            href="javascript:void(0)"
+            class="nav-link"
+            onclick="showSection('students', this)"
+        >
+            <span class="nav-icon"></span>
+            Students
+        </a>
+
+        <a
+            href="javascript:void(0)"
+            class="nav-link"
+            onclick="showSection('teachers', this)"
+        >
+            <span class="nav-icon"></span>
+            Teachers
+        </a>
+
+        <a
+            href="javascript:void(0)"
+            class="nav-link"
+            onclick="showSection('courses', this)"
+        >
+            <span class="nav-icon"></span>
+            Courses
+        </a>
+
+        <a
+            href="javascript:void(0)"
+            class="nav-link"
+            onclick="showSection('departments', this)"
+        >
+            <span class="nav-icon"></span>
+            Departments
+        </a>
+
+        <a
+            href="javascript:void(0)"
+            class="nav-link"
+            onclick="showSection('venues', this)"
+        >
+            <span class="nav-icon"></span>
+            Venues
+        </a>
+
+        <a
+            href="javascript:void(0)"
+            class="nav-link"
+            onclick="showSection('sessions', this)"
+        >
+            <span class="nav-icon"></span>
+            Sessions
+        </a>
+
+        <a
+            href="javascript:void(0)"
+            class="nav-link"
+            onclick="showSection('attendance', this)"
+        >
+            <span class="nav-icon"></span>
+            Attendance Records
+        </a>
+
+        <a
+            href="{% url 'admin-teacher-create' %}"
+            class="nav-link create-teacher"
+        >
+            <span class="nav-icon"></span>
+            Create Teacher Account
+        </a>
+
+    </aside>
+
+
+    <!-- =========================
+         MAIN
+    ========================= -->
+
+    <main class="main">
+
+        <div class="topbar">
+
+            <div>
+                <h1 id="page-title">Administrator Dashboard</h1>
+
+                <p id="page-description">
+                    Manage GeoAttend system records and users.
+                </p>
+            </div>
+
+            <div class="admin-label">
+                Administrator
+            </div>
+
+        </div>
+
+
+        <div class="content">
+
+            <!-- =========================
+                 DASHBOARD
+            ========================= -->
+
+            <div id="dashboard" class="dashboard-section">
+
+                <div class="summary-grid">
+
+                    <div class="summary-card">
+                        <div class="count">{{ students|length }}</div>
+                        <div class="label">Students</div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="count">{{ courses|length }}</div>
+                        <div class="label">Courses</div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="count">{{ sessions|length }}</div>
+                        <div class="label">Sessions</div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="count">{{ venues|length }}</div>
+                        <div class="label">Venues</div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="count">{{ departments|length }}</div>
+                        <div class="label">Departments</div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="count">{{ attendance_records|length }}</div>
+                        <div class="label">Attendance Records</div>
+                    </div>
+
+                </div>
+
+                <div class="table-section">
+
+                    <div class="table-header">
+                        <h2>Welcome to GeoAttend</h2>
+                    </div>
+
+                    <div style="padding: 25px;">
+                        <p>
+                            Use the navigation menu on the left to manage
+                            students, teachers, courses, departments,
+                            venues, sessions, and attendance records.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================
+                 STUDENTS
+            ========================= -->
+
+            <div id="students" class="dashboard-section">
+
+                <div class="table-section">
+
+                    <div class="table-header">
+                        <h2>Students</h2>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>First Name</th>
+                                    <th>Last Name</th>
+                                    <th>Email</th>
+                                    <th>Account</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {% for student in students %}
+
+                                <tr>
+                                    <td>{{ student.student_id }}</td>
+                                    <td>{{ student.firstname }}</td>
+                                    <td>{{ student.lastname }}</td>
+                                    <td>{{ student.email }}</td>
+
+                                    <td>
+                                        {% if student.user %}
+                                            Registered
+                                        {% else %}
+                                            No Account
+                                        {% endif %}
+                                    </td>
+                                </tr>
+
+                                {% empty %}
+
+                                <tr>
+                                    <td colspan="5" class="empty">
+                                        No students found.
+                                    </td>
+                                </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================
+                 TEACHERS
+            ========================= -->
+
+            <div id="teachers" class="dashboard-section">
+
+                <div class="table-section">
+
+                    <div class="table-header">
+                        <h2>Teachers</h2>
+                    </div>
+
+                    <div class="action-area">
+                        <a
+                            href="{% url 'admin-teacher-create' %}"
+                            class="action-button"
+                        >
+                            + Create Teacher Account
+                        </a>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>First Name</th>
+                                    <th>Last Name</th>
+                                    <th>Email</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {% for teacher in teachers %}
+
+                                <tr>
+                                    <td>{{ teacher.username }}</td>
+                                    <td>{{ teacher.first_name }}</td>
+                                    <td>{{ teacher.last_name }}</td>
+                                    <td>{{ teacher.email }}</td>
+                                </tr>
+
+                                {% empty %}
+
+                                <tr>
+                                    <td colspan="4" class="empty">
+                                        No teachers found.
+                                    </td>
+                                </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================
+                 COURSES
+            ========================= -->
+
+            <div id="courses" class="dashboard-section">
+
+                <div class="table-section">
+
+                    <div class="table-header">
+                        <h2>Courses</h2>
+                    </div>
+
+                    <div class="action-area">
+                        <a
+                            href="{% url 'admin-course-create' %}"
+                            class="action-button"
+                        >
+                            + Add Course
+                        </a>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Course Name</th>
+                                    <th>Department</th>
+                                    <th>Teacher</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {% for course in courses %}
+
+                                <tr>
+                                    <td>{{ course.code }}</td>
+                                    <td>{{ course.name }}</td>
+                                    <td>
+                                        {{ course.department.code }} -
+                                        {{ course.department.name }}
+                                    </td>
+                                    <td>
+                                        {{ course.teacher.first_name }}
+                                        {{ course.teacher.last_name }}
+                                    </td>
+                                </tr>
+
+                                {% empty %}
+
+                                <tr>
+                                    <td colspan="4" class="empty">
+                                        No courses found.
+                                    </td>
+                                </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================
+                 DEPARTMENTS
+            ========================= -->
+
+            <div id="departments" class="dashboard-section">
+
+                <div class="table-section">
+
+                    <div class="table-header">
+                        <h2>Departments</h2>
+                    </div>
+
+                    <div class="action-area">
+                        <a
+                            href="{% url 'admin-department-create' %}"
+                            class="action-button"
+                        >
+                            + Add Department
+                        </a>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Name</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {% for department in departments %}
+
+                                <tr>
+                                    <td>{{ department.code }}</td>
+                                    <td>{{ department.name }}</td>
+                                </tr>
+
+                                {% empty %}
+
+                                <tr>
+                                    <td colspan="2" class="empty">
+                                        No departments found.
+                                    </td>
+                                </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================
+                 VENUES
+            ========================= -->
+
+            <div id="venues" class="dashboard-section">
+
+                <div class="table-section">
+
+                    <div class="table-header">
+                        <h2>Venues</h2>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Latitude</th>
+                                    <th>Longitude</th>
+                                    <th>Default Radius</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {% for venue in venues %}
+
+                                <tr>
+                                    <td>{{ venue.name }}</td>
+                                    <td>{{ venue.latitude }}</td>
+                                    <td>{{ venue.longitude }}</td>
+                                    <td>{{ venue.default_radius_m }} m</td>
+                                </tr>
+
+                                {% empty %}
+
+                                <tr>
+                                    <td colspan="4" class="empty">
+                                        No venues found.
+                                    </td>
+                                </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================
+                 SESSIONS
+            ========================= -->
+
+            <div id="sessions" class="dashboard-section">
+
+                <div class="table-section">
+
+                    <div class="table-header">
+                        <h2>Sessions</h2>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Course</th>
+                                    <th>Venue</th>
+                                    <th>Start</th>
+                                    <th>End</th>
+                                    <th>Radius</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {% for session in sessions %}
+
+                                <tr>
+                                    <td>{{ session.title }}</td>
+                                    <td>{{ session.course.code }}</td>
+                                    <td>{{ session.venue.name }}</td>
+                                    <td>{{ session.starts_at }}</td>
+                                    <td>{{ session.ends_at }}</td>
+                                    <td>{{ session.radius_m }} m</td>
+                                </tr>
+
+                                {% empty %}
+
+                                <tr>
+                                    <td colspan="6" class="empty">
+                                        No sessions found.
+                                    </td>
+                                </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =========================
+                 ATTENDANCE RECORDS
+            ========================= -->
+
+            <div id="attendance" class="dashboard-section">
+
+                <div class="table-section">
+
+                    <div class="table-header">
+                        <h2>Attendance Records</h2>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Course</th>
+                                    <th>Session</th>
+                                    <th>Status</th>
+                                    <th>Distance</th>
+                                    <th>Checked In</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+
+                                {% for record in attendance_records %}
+
+                                <tr>
+                                    <td>
+                                        {{ record.student.firstname }}
+                                        {{ record.student.lastname }}
+                                    </td>
+
+                                    <td>
+                                        {{ record.session.course.code }}
+                                    </td>
+
+                                    <td>
+                                        {{ record.session.title }}
+                                    </td>
+
+                                    <td>
+                                        {{ record.status }}
+                                    </td>
+
+                                    <td>
+                                        {{ record.distance_m }} m
+                                    </td>
+
+                                    <td>
+                                        {{ record.checked_in_at }}
+                                    </td>
+                                </tr>
+
+                                {% empty %}
+
+                                <tr>
+                                    <td colspan="6" class="empty">
+                                        No attendance records found.
+                                    </td>
+                                </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="footer">
+                GeoAttend © 2026
+            </div>
+
+        </div>
+
+    </main>
+
+
+    <!-- =========================
+         JAVASCRIPT
+    ========================= -->
+
+    <script>
+
+        function showSection(sectionId, clickedButton) {
+
+            // Hide every section
+            document
+                .querySelectorAll(".dashboard-section")
+                .forEach(function(section) {
+                    section.style.display = "none";
+                });
+
+            // Remove active state
+            document
+                .querySelectorAll(".nav-link")
+                .forEach(function(link) {
+                    link.classList.remove("active");
+                });
+
+            // Show selected section
+            document.getElementById(sectionId).style.display = "block";
+
+            // Highlight selected button
+            clickedButton.classList.add("active");
+
+            // Change page title
+            const titles = {
+                dashboard: "Administrator Dashboard",
+                students: "Students",
+                teachers: "Teachers",
+                courses: "Courses",
+                departments: "Departments",
+                venues: "Venues",
+                sessions: "Sessions",
+                attendance: "Attendance Records"
+            };
+
+            const descriptions = {
+                dashboard: "Manage GeoAttend system records and users.",
+                students: "View registered student accounts.",
+                teachers: "Manage teacher accounts.",
+                courses: "Manage courses and teacher assignments.",
+                departments: "Manage academic departments.",
+                venues: "Manage attendance locations.",
+                sessions: "View attendance sessions.",
+                attendance: "View student attendance records."
+            };
+
+            document.getElementById("page-title").textContent =
+                titles[sectionId];
+
+            document.getElementById("page-description").textContent =
+                descriptions[sectionId];
+        }
+
+    </script>
+
+</body>
+</html>
