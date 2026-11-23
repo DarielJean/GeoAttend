@@ -1,46 +1,139 @@
-
 {% extends 'base.html' %}
-{% block title %}Teacher Sign In | GeoAttend{% endblock %}
+{% load static %}
+{% block title %}Sign In | GeoAttend{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-image:
+            linear-gradient(rgba(244, 246, 244, 0.88), rgba(244, 246, 244, 0.92)),
+            url("{% static 'img/psu-logo-bg.png' %}");
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 460px;
+        background-attachment: fixed;
+    }
+
+    .role-selector {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.45rem;
+        background: #eef2ee;
+        padding: 0.35rem;
+        border-radius: 12px;
+        border: 1px solid rgba(26, 54, 31, 0.14);
+    }
+
+    .role-option input[type="radio"] {
+        display: none;
+    }
+
+    .role-option label {
+        display: block;
+        text-align: center;
+        padding: 0.55rem 0.35rem;
+        border-radius: 9px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #3f4a41;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        user-select: none;
+        line-height: 1.2;
+    }
+
+    .role-option input[type="radio"]:checked + label {
+        background: var(--psu-gradient);
+        color: #ffffff;
+        box-shadow: 0 4px 10px -2px rgba(26, 54, 31, 0.38);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 
 <div class="row justify-content-center mt-4">
-    <div class="col-md-5 col-lg-4">
+    <div class="col-md-6 col-lg-5 col-xl-4">
 
         <div class="card border-0 shadow-sm">
 
             <div class="card-header bg-primary text-white text-center py-3">
                 <h5 class="mb-0 fw-bold">
-                    GeoAttend Teacher Sign In
+                    GeoAttend Sign In
                 </h5>
+                <small class="opacity-75">Palawan State University</small>
             </div>
 
             <div class="card-body p-4">
 
-                {% if form.errors %}
-                    <div class="alert alert-danger small">
-                        Invalid username or password. Please try again.
+                {% if error %}
+                    <div class="alert alert-danger small rounded-3">
+                        {{ error }}
                     </div>
                 {% endif %}
 
-                <form method="post">
-
+                <form method="post" action="{% url 'login' %}">
                     {% csrf_token %}
 
+                    <!-- ROLE SELECTOR -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            Username
+                        <label class="form-label fw-semibold small text-uppercase text-muted">
+                            Sign In As
+                        </label>
+                        <div class="role-selector">
+                            <div class="role-option">
+                                <input
+                                    type="radio"
+                                    id="role-student"
+                                    name="role"
+                                    value="student"
+                                    {% if selected_role == 'student' or not selected_role %}checked{% endif %}
+                                >
+                                <label for="role-student">Student</label>
+                            </div>
+
+                            <div class="role-option">
+                                <input
+                                    type="radio"
+                                    id="role-holder"
+                                    name="role"
+                                    value="attendance_holder"
+                                    {% if selected_role == 'attendance_holder' %}checked{% endif %}
+                                >
+                                <label for="role-holder">Attendance Holder</label>
+                            </div>
+
+                            <div class="role-option">
+                                <input
+                                    type="radio"
+                                    id="role-admin"
+                                    name="role"
+                                    value="admin"
+                                    {% if selected_role == 'admin' %}checked{% endif %}
+                                >
+                                <label for="role-admin">Admin</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- USERNAME / STUDENT ID -->
+                    <div class="mb-3">
+                        <label id="usernameLabel" class="form-label fw-semibold">
+                            Student ID
                         </label>
 
                         <input
                             type="text"
+                            id="usernameInput"
                             name="username"
                             class="form-control"
+                            placeholder="e.g., 2023-8-0123"
                             autofocus
                             required
                         >
                     </div>
 
+                    <!-- PASSWORD -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">
                             Password
@@ -54,20 +147,27 @@
                         >
                     </div>
 
-                    <input
-                        type="hidden"
-                        name="next"
-                        value="{{ next }}"
-                    >
-
                     <button
                         type="submit"
+                        id="submitBtn"
                         class="btn btn-primary w-100 py-2 fw-semibold"
                     >
-                        Teacher Sign In
+                        Sign In as Student
                     </button>
 
                 </form>
+
+                <!-- STUDENT REGISTRATION LINK (SHOWN ONLY FOR STUDENT ROLE) -->
+                <div id="studentRegisterBox" class="text-center mt-3 pt-2 border-top">
+                    <span class="small text-muted">New student?</span>
+                    <a
+                        href="{% url 'student-register' %}"
+                        class="small fw-bold text-decoration-none ms-1"
+                        style="color: var(--psu-green);"
+                    >
+                        Create Student Account
+                    </a>
+                </div>
 
             </div>
         </div>
@@ -75,4 +175,38 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const roleRadios = document.querySelectorAll('input[name="role"]');
+    const usernameLabel = document.getElementById('usernameLabel');
+    const usernameInput = document.getElementById('usernameInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const studentRegisterBox = document.getElementById('studentRegisterBox');
+
+    function updateRoleUI() {
+        const selected = document.querySelector('input[name="role"]:checked')?.value || 'student';
+
+        if (selected === 'student') {
+            usernameLabel.textContent = 'Student ID';
+            usernameInput.placeholder = 'e.g., 2023-8-0123';
+            submitBtn.textContent = 'Sign In as Student';
+            studentRegisterBox.style.display = 'block';
+        } else if (selected === 'attendance_holder') {
+            usernameLabel.textContent = 'Attendance Holder Username';
+            usernameInput.placeholder = 'Enter your username';
+            submitBtn.textContent = 'Sign In as Attendance Holder';
+            studentRegisterBox.style.display = 'none';
+        } else {
+            usernameLabel.textContent = 'Admin Username';
+            usernameInput.placeholder = 'Enter admin username';
+            submitBtn.textContent = 'Sign In as Admin';
+            studentRegisterBox.style.display = 'none';
+        }
+    }
+
+    roleRadios.forEach(radio => radio.addEventListener('change', updateRoleUI));
+    updateRoleUI();
+</script>
 {% endblock %}

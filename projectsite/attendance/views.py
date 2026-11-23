@@ -1,5 +1,4 @@
 import csv
-import json
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
@@ -20,15 +19,95 @@ from .models import (
 )
 
 
-def is_teacher(user):
-    return user.is_authenticated and (user.is_staff or user.taught_courses.exists())
+def is_admin(user):
+    return user.is_authenticated and user.is_superuser
+
+
+def is_student(user):
+    return user.is_authenticated and hasattr(user, "student_profile")
+
+
+def is_attendance_holder(user):
+    return (
+        user.is_authenticated
+        and not user.is_superuser
+        and not hasattr(user, "student_profile")
+    )
+
+
+def redirect_by_role(user):
+    if is_admin(user):
+        return redirect("admin-dashboard")
+    if is_student(user):
+        return redirect("student-checkin")
+    return redirect("teacher-dashboard")
+
+
+def unified_login_view(request):
+    if request.user.is_authenticated:
+        return redirect_by_role(request.user)
+
+    selected_role = request.POST.get("role") or request.GET.get("role") or "student"
+
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is None:
+            return render(
+                request,
+                "registration/login.html",
+                {
+                    "error": "Invalid username or password. Please try again.",
+                    "selected_role": selected_role,
+                },
+            )
+
+        if selected_role == "student" and not is_student(user):
+            return render(
+                request,
+                "registration/login.html",
+                {
+                    "error": "This account is not registered as a Student.",
+                    "selected_role": selected_role,
+                },
+            )
+
+        if selected_role == "attendance_holder" and not is_attendance_holder(user):
+            return render(
+                request,
+                "registration/login.html",
+                {
+                    "error": "This account is not registered as an Attendance Holder.",
+                    "selected_role": selected_role,
+                },
+            )
+
+        if selected_role == "admin" and not is_admin(user):
+            return render(
+                request,
+                "registration/login.html",
+                {
+                    "error": "Access denied: This account does not have Admin privileges.",
+                    "selected_role": selected_role,
+                },
+            )
+
+        login(request, user)
+        return redirect_by_role(user)
+
+    return render(
+        request,
+        "registration/login.html",
+        {"selected_role": selected_role},
+    )
 
 
 def student_register_view(request):
     if request.user.is_authenticated:
-        if hasattr(request.user, "student_profile"):
-            return redirect("student-checkin")
-        return redirect("teacher-dashboard")
+        return redirect_by_role(request.user)
 
     if request.method == "POST":
         student_id = request.POST.get("student_id", "").strip()
@@ -99,64 +178,36 @@ def student_register_view(request):
         )
 
         messages.success(
-            request, "Student registration successful. You can now log in."
+            request, "Student registration successful. You can now sign in."
         )
 
-        return redirect("student-login")
+        return redirect("login")
 
     return render(request, "registration/student_register.html")
 
 
 def student_login_view(request):
-    if request.user.is_authenticated:
-        if hasattr(request.user, "student_profile"):
-            return redirect("student-checkin")
-        return redirect("teacher-dashboard")
-
-    if request.method == "POST":
-        username = request.POST.get("username", "").strip()
-        password = request.POST.get("password", "")
-
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None and hasattr(user, "student_profile"):
-            login(request, user)
-            return redirect("student-checkin")
-
-        return render(
-            request,
-            "registration/student_login.html",
-            {"error": "Invalid student username or password."},
-        )
-
-    return render(request, "registration/student_login.html")
+    return redirect("login")
 
 
 @login_required
 def student_checkin_view(request):
-    if is_teacher(request.user) and request.GET.get("mode") != "student":
-        return redirect("teacher-dashboard")
+    if not is_student(request.user):
+        return redirect_by_role(request.user)
 
     now = timezone.now()
-
-    student_profile = (
-        getattr(request.user, "student_profile", None)
-        if request.user.is_authenticated
-        else None
-    )
+    student_profile = request.user.student_profile
 
     active_sessions = Session.objects.filter(
-        starts_at__lte=now, ends_at__gte=now
+        starts_at__lte=now,
+        ends_at__gte=now,
+        course__enrollments__student=student_profile,
     ).select_related("course", "venue")
 
-    if student_profile:
-        active_sessions = active_sessions.filter(
-            course__enrollments__student=student_profile
-        )
-
-    upcoming_sessions = Session.objects.filter(starts_at__gt=now).select_related(
-        "course", "venue"
-    )[:5]
+    upcoming_sessions = Session.objects.filter(
+        starts_at__gt=now,
+        course__enrollments__student=student_profile,
+    ).select_related("course", "venue")[:5]
 
     return render(
         request,
@@ -171,14 +222,13 @@ def student_checkin_view(request):
 
 @login_required
 def teacher_dashboard_view(request):
-    if not is_teacher(request.user):
-        messages.error(request, "Access denied: Teacher account required.")
-        return redirect("student-checkin")
+    if not is_attendance_holder(request.user):
+        messages.error(request, "Access denied: Attendance Holder account required.")
+        return redirect_by_role(request.user)
 
-    sessions = Session.objects.select_related("course", "venue").all()
-
-    if not request.user.is_superuser:
-        sessions = sessions.filter(course__teacher=request.user)
+    sessions = Session.objects.select_related("course", "venue").filter(
+        course__teacher=request.user
+    )
 
     selected_session_id = request.GET.get("session")
     selected_session = None
@@ -194,7 +244,7 @@ def teacher_dashboard_view(request):
             session=selected_session
         ).select_related("student")
 
-    checkin_url = request.build_absolute_uri("/?mode=student")
+    checkin_url = request.build_absolute_uri("/")
 
     return render(
         request,
@@ -210,15 +260,13 @@ def teacher_dashboard_view(request):
 
 @login_required
 def export_attendance_csv(request, session_id):
-    if not is_teacher(request.user):
-        messages.error(request, "Access denied: Teacher account required.")
-        return redirect("student-checkin")
+    if not is_attendance_holder(request.user):
+        messages.error(request, "Access denied: Attendance Holder account required.")
+        return redirect_by_role(request.user)
 
-    sessions = Session.objects.select_related("course")
-
-    if not request.user.is_superuser:
-        sessions = sessions.filter(course__teacher=request.user)
-
+    sessions = Session.objects.select_related("course").filter(
+        course__teacher=request.user
+    )
     session = get_object_or_404(sessions, id=session_id)
 
     records_by_student = {
@@ -241,9 +289,7 @@ def export_attendance_csv(request, session_id):
     )
 
     response = HttpResponse(content_type="text/csv")
-
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
     writer = csv.writer(response)
 
     writer.writerow(
@@ -295,17 +341,15 @@ def export_attendance_csv(request, session_id):
 
 @login_required
 def session_create_view(request):
-    if not is_teacher(request.user):
-        messages.error(request, "Access denied: Teacher account required.")
-        return redirect("student-checkin")
+    if not is_attendance_holder(request.user):
+        messages.error(request, "Access denied: Attendance Holder account required.")
+        return redirect_by_role(request.user)
 
     form = SessionCreateForm(request.POST or None, user=request.user)
 
     if request.method == "POST" and form.is_valid():
         session = form.save()
-
         messages.success(request, f'Session "{session.title}" created and active.')
-
         return redirect(f"/dashboard/?session={session.id}")
 
     venues_data = {
@@ -329,9 +373,9 @@ def session_create_view(request):
 
 @login_required
 def admin_dashboard_view(request):
-    if not request.user.is_superuser:
+    if not is_admin(request.user):
         messages.error(request, "Access denied: Administrator account required.")
-        return redirect("student-checkin")
+        return redirect_by_role(request.user)
 
     students = Student.objects.all().select_related("user")
     courses = Course.objects.all().select_related("department", "teacher")
@@ -366,9 +410,9 @@ def admin_dashboard_view(request):
 
 @login_required
 def admin_teacher_create_view(request):
-    if not request.user.is_superuser:
+    if not is_admin(request.user):
         messages.error(request, "Access denied: Administrator account required.")
-        return redirect("student-checkin")
+        return redirect_by_role(request.user)
 
     if request.method == "POST":
         username = request.POST.get("username", "").strip()
@@ -406,8 +450,7 @@ def admin_teacher_create_view(request):
             password=password,
         )
 
-        messages.success(request, "Teacher account created successfully.")
-
+        messages.success(request, "Attendance Holder account created successfully.")
         return redirect("admin-dashboard")
 
     return render(request, "admin/teacher_form.html")
@@ -415,9 +458,9 @@ def admin_teacher_create_view(request):
 
 @login_required
 def admin_department_create_view(request):
-    if not request.user.is_superuser:
+    if not is_admin(request.user):
         messages.error(request, "Access denied: Administrator account required.")
-        return redirect("student-checkin")
+        return redirect_by_role(request.user)
 
     if request.method == "POST":
         code = request.POST.get("code", "").strip()
@@ -444,13 +487,8 @@ def admin_department_create_view(request):
                 {"error": "Department name already exists."},
             )
 
-        Department.objects.create(
-            code=code,
-            name=name,
-        )
-
+        Department.objects.create(code=code, name=name)
         messages.success(request, "Department created successfully.")
-
         return redirect("admin-dashboard")
 
     return render(request, "admin/department_form.html")
@@ -458,9 +496,9 @@ def admin_department_create_view(request):
 
 @login_required
 def admin_course_create_view(request):
-    if not request.user.is_superuser:
+    if not is_admin(request.user):
         messages.error(request, "Access denied: Administrator account required.")
-        return redirect("student-checkin")
+        return redirect_by_role(request.user)
 
     departments = Department.objects.all()
     teachers = User.objects.filter(
@@ -507,7 +545,6 @@ def admin_course_create_view(request):
         )
 
         messages.success(request, "Course created successfully.")
-
         return redirect("admin-dashboard")
 
     return render(

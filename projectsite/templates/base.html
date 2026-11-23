@@ -1,4 +1,3 @@
-
 {% load static %}
 
 <!DOCTYPE html>
@@ -85,7 +84,6 @@
         }
 
         /* NAVBAR */
-
         .psu-navbar {
             background-color: var(--psu-green);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -122,15 +120,10 @@
         .psu-navbar .nav-link {
             font-weight: 600;
             font-size: 0.9rem;
-
             color: rgba(255, 255, 255, 0.85) !important;
-
             padding: 0.45rem 0.85rem !important;
             border-radius: 8px;
-
-            transition:
-                color 0.15s ease,
-                background-color 0.15s ease;
+            transition: color 0.15s ease, background-color 0.15s ease;
         }
 
         .psu-navbar .nav-link:hover,
@@ -150,24 +143,18 @@
         .user-pill {
             background: rgba(255, 255, 255, 0.15);
             color: #ffffff;
-
             border: 1px solid rgba(255, 255, 255, 0.25);
-
             font-weight: 700;
             font-size: 0.8rem;
-
             padding: 0.35rem 0.75rem;
             border-radius: 999px;
         }
 
         /* CARDS */
-
         .card {
             background: var(--surface-card);
-
             border: 1px solid var(--border-subtle) !important;
             border-radius: 14px;
-
             box-shadow: var(--shadow-card) !important;
             overflow: hidden;
         }
@@ -188,28 +175,20 @@
         }
 
         /* BUTTONS */
-
         .btn-primary {
             background: var(--psu-gradient);
             border: none;
-
             border-radius: 10px;
             font-weight: 600;
             color: #ffffff;
-
             box-shadow: var(--shadow-green);
-
-            transition:
-                transform 0.15s ease,
-                box-shadow 0.15s ease,
-                background 0.15s ease;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
         }
 
         .btn-primary:hover:not(:disabled),
         .btn-primary:focus:not(:disabled) {
             background: var(--psu-gradient-hover);
             color: #ffffff;
-
             transform: translateY(-1px);
             box-shadow: var(--shadow-green-hover);
         }
@@ -223,7 +202,6 @@
         .btn-outline-primary {
             color: var(--psu-green);
             border-color: var(--psu-green-border);
-
             background-color: #ffffff;
             border-radius: 10px;
             font-weight: 600;
@@ -236,31 +214,22 @@
         }
 
         /* FORM INPUTS */
-
         .form-control,
         .form-select {
             border-radius: 10px;
-
             border: 1px solid rgba(24, 24, 27, 0.15);
-
             padding: 0.58rem 0.85rem;
             font-size: 0.94rem;
-
-            transition:
-                border-color 0.15s ease,
-                box-shadow 0.15s ease;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
 
         .form-control:focus,
         .form-select:focus {
             border-color: var(--psu-green);
-
-            box-shadow:
-                0 0 0 3.5px rgba(26, 54, 31, 0.18);
+            box-shadow: 0 0 0 3.5px rgba(26, 54, 31, 0.18);
         }
 
         /* TABLES */
-
         .stat-card {
             border-left: 3.5px solid var(--psu-green) !important;
         }
@@ -269,30 +238,22 @@
             font-size: 0.76rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-
             color: var(--ink-muted);
             font-weight: 700;
-
             background-color: #f8faf8;
-
             border-bottom: 1px solid var(--border-subtle);
-
             padding: 0.8rem 1rem;
         }
 
         .table tbody td {
             padding: 0.85rem 1rem;
-
-            border-bottom:
-                1px solid rgba(24, 24, 27, 0.05);
+            border-bottom: 1px solid rgba(24, 24, 27, 0.05);
         }
 
         #map {
             height: 340px;
-
             border-radius: 10px;
             border: 1px solid var(--border-subtle);
-
             z-index: 1;
         }
     </style>
@@ -308,15 +269,13 @@
 
         <div class="container">
 
-            <!-- BRAND -->
+            <!-- BRAND (ROUTES ONLY TO USER'S OWN WORKSPACE) -->
             <a
                 class="navbar-brand"
-                href="{% url 'student-checkin' %}"
+                href="{% if user.is_authenticated %}{% if user.is_superuser %}{% url 'admin-dashboard' %}{% elif user.student_profile %}{% url 'student-checkin' %}{% else %}{% url 'teacher-dashboard' %}{% endif %}{% else %}{% url 'login' %}{% endif %}"
             >
                 <span class="brand-mark">G</span>
-
                 <span>GeoAttend</span>
-
                 <span
                     class="badge rounded-pill ms-1"
                     style="
@@ -330,7 +289,6 @@
                 </span>
             </a>
 
-            <!-- MOBILE MENU -->
             <button
                 class="navbar-toggler"
                 type="button"
@@ -340,64 +298,55 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <!-- NAVIGATION -->
-            <div
-                class="collapse navbar-collapse"
-                id="navbarNav"
-            >
+            <div class="collapse navbar-collapse" id="navbarNav">
 
-                <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
-
-                    <!-- STUDENT CHECK-IN -->
-                    <li class="nav-item">
-                        <a
-                            class="nav-link"
-                            href="{% url 'student-login' %}"
-                        >
-                            Student Check-In
-                        </a>
-                    </li>
-
-                    <!-- TEACHER SIGN IN -->
-                    <li class="nav-item">
-                        <a
-                            class="nav-link"
-                            href="{% url 'login' %}"
-                        >
-                            Teacher Sign In
-                        </a>
-                    </li>
-
-                    <!-- ADMIN -->
-                    <li class="nav-item">
-                        <a
-                            class="nav-link"
-                            href="{% url 'admin-dashboard' %}"
-                        >
-                            Admin
-                        </a>
-                    </li>
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-2">
 
                     {% if user.is_authenticated %}
 
-                        <!-- USERNAME -->
-                        <li class="nav-item ms-lg-2">
-                            <span class="user-pill">
-                                {{ user.username }}
-                            </span>
-                        </li>
+                        {% if user.is_superuser %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'admin-dashboard' %}">
+                                    Admin Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <span class="user-pill">
+                                    {{ user.username }} · Admin
+                                </span>
+                            </li>
+                        {% elif user.student_profile %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'student-checkin' %}">
+                                    Student Check-In
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <span class="user-pill">
+                                    {{ user.username }} · Student
+                                </span>
+                            </li>
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'teacher-dashboard' %}">
+                                    Attendance Holder Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <span class="user-pill">
+                                    {{ user.username }} · Attendance Holder
+                                </span>
+                            </li>
+                        {% endif %}
 
                         <!-- LOGOUT -->
                         <li class="nav-item ms-lg-1">
-
                             <form
                                 method="post"
                                 action="{% url 'logout' %}"
                                 class="d-inline"
                             >
-
                                 {% csrf_token %}
-
                                 <button
                                     type="submit"
                                     class="btn btn-sm btn-light rounded-pill px-3 fw-semibold"
@@ -405,9 +354,15 @@
                                 >
                                     Logout
                                 </button>
-
                             </form>
+                        </li>
 
+                    {% else %}
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">
+                                Sign In
+                            </a>
                         </li>
 
                     {% endif %}
@@ -424,26 +379,19 @@
     <main class="container pb-5">
 
         {% if messages %}
-
             {% for message in messages %}
-
                 <div
                     class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show rounded-3 shadow-sm"
                     role="alert"
                 >
-
                     {{ message }}
-
                     <button
                         type="button"
                         class="btn-close"
                         data-bs-dismiss="alert"
                     ></button>
-
                 </div>
-
             {% endfor %}
-
         {% endif %}
 
         {% block content %}{% endblock %}
@@ -451,14 +399,10 @@
     </main>
 
     <!-- BOOTSTRAP -->
-    <script
-        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- LEAFLET -->
-    <script
-        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    ></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     {% block extra_js %}{% endblock %}
 

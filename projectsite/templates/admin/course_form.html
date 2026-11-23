@@ -143,7 +143,7 @@
             <h1>Add Course</h1>
 
             <p class="subtitle">
-                Create a new course and assign it to a department and teacher.
+                Create a new course and assign it to a department and attendance holder.
             </p>
 
             {% if error %}
@@ -195,10 +195,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="teacher">Teacher</label>
+                    <label for="teacher">Attendance Holder</label>
 
                     <select id="teacher" name="teacher" required>
-                        <option value="">Select Teacher</option>
+                        <option value="">Select Attendance Holder</option>
 
                         {% for teacher in teachers %}
                             <option value="{{ teacher.id }}">

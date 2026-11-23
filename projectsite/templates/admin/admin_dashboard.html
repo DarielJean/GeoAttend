@@ -28,10 +28,12 @@
             top: 0;
             bottom: 0;
             width: 250px;
-            background: #194d29;
+            background: #1A361F;
             color: white;
             padding: 25px 15px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
 
         .brand {
@@ -91,14 +93,38 @@
         }
 
         .create-teacher {
-            margin-top: 25px;
+            margin-top: 20px;
             background: white;
-            color: #194d29 !important;
+            color: #1A361F !important;
             justify-content: center;
         }
 
         .create-teacher:hover {
             background: #f0f0f0 !important;
+        }
+
+        .logout-area {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .logout-button {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(255,255,255,0.14);
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.28);
+            border-radius: 7px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .logout-button:hover {
+            background: #ffffff;
+            color: #1A361F;
         }
 
         /* =========================
@@ -121,7 +147,7 @@
 
         .topbar h1 {
             margin: 0;
-            color: #194d29;
+            color: #1A361F;
             font-size: 25px;
         }
 
@@ -132,8 +158,12 @@
         }
 
         .admin-label {
-            color: #194d29;
+            color: #1A361F;
             font-weight: bold;
+            background: #eaf2ec;
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 13px;
         }
 
         .content {
@@ -160,13 +190,13 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 2px 7px rgba(0,0,0,0.07);
-            border-left: 5px solid #194d29;
+            border-left: 5px solid #1A361F;
         }
 
         .summary-card .count {
             font-size: 28px;
             font-weight: bold;
-            color: #194d29;
+            color: #1A361F;
         }
 
         .summary-card .label {
@@ -192,7 +222,7 @@
         }
 
         .table-header {
-            background: #194d29;
+            background: #1A361F;
             color: white;
             padding: 18px 20px;
         }
@@ -208,7 +238,7 @@
 
         .action-button {
             display: inline-block;
-            background: #194d29;
+            background: #1A361F;
             color: white;
             padding: 10px 16px;
             border-radius: 6px;
@@ -218,7 +248,7 @@
         }
 
         .action-button:hover {
-            background: #123b20;
+            background: #132817;
         }
 
         .table-wrapper {
@@ -233,7 +263,7 @@
 
         th {
             background: #eef3ef;
-            color: #194d29;
+            color: #1A361F;
             text-align: left;
             padding: 13px 18px;
             font-size: 14px;
@@ -330,7 +360,7 @@
             class="nav-link active"
             onclick="showSection('dashboard', this)"
         >
-            <span class="nav-icon"> </span>
+            <span class="nav-icon"></span>
             Dashboard
         </a>
 
@@ -353,7 +383,7 @@
             onclick="showSection('teachers', this)"
         >
             <span class="nav-icon"></span>
-            Teachers
+            Attendance Holders
         </a>
 
         <a
@@ -405,9 +435,17 @@
             href="{% url 'admin-teacher-create' %}"
             class="nav-link create-teacher"
         >
-            <span class="nav-icon"></span>
-            Create Teacher Account
+            Create Attendance Holder Account
         </a>
+
+        <div class="logout-area">
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="logout-button">
+                    Logout
+                </button>
+            </form>
+        </div>
 
     </aside>
 
@@ -429,7 +467,7 @@
             </div>
 
             <div class="admin-label">
-                Administrator
+                {{ user.username }} · Administrator
             </div>
 
         </div>
@@ -486,7 +524,7 @@
                     <div style="padding: 25px;">
                         <p>
                             Use the navigation menu on the left to manage
-                            students, teachers, courses, departments,
+                            students, attendance holders, courses, departments,
                             venues, sessions, and attendance records.
                         </p>
                     </div>
@@ -561,7 +599,7 @@
 
 
             <!-- =========================
-                 TEACHERS
+                 ATTENDANCE HOLDERS
             ========================= -->
 
             <div id="teachers" class="dashboard-section">
@@ -569,7 +607,7 @@
                 <div class="table-section">
 
                     <div class="table-header">
-                        <h2>Teachers</h2>
+                        <h2>Attendance Holders</h2>
                     </div>
 
                     <div class="action-area">
@@ -577,7 +615,7 @@
                             href="{% url 'admin-teacher-create' %}"
                             class="action-button"
                         >
-                            + Create Teacher Account
+                            + Create Attendance Holder Account
                         </a>
                     </div>
 
@@ -608,7 +646,7 @@
 
                                 <tr>
                                     <td colspan="4" class="empty">
-                                        No teachers found.
+                                        No attendance holders found.
                                     </td>
                                 </tr>
 
@@ -653,7 +691,7 @@
                                     <th>Code</th>
                                     <th>Course Name</th>
                                     <th>Department</th>
-                                    <th>Teacher</th>
+                                    <th>Attendance Holder</th>
                                 </tr>
                             </thead>
 
@@ -986,7 +1024,7 @@
             const titles = {
                 dashboard: "Administrator Dashboard",
                 students: "Students",
-                teachers: "Teachers",
+                teachers: "Attendance Holders",
                 courses: "Courses",
                 departments: "Departments",
                 venues: "Venues",
@@ -997,8 +1035,8 @@
             const descriptions = {
                 dashboard: "Manage GeoAttend system records and users.",
                 students: "View registered student accounts.",
-                teachers: "Manage teacher accounts.",
-                courses: "Manage courses and teacher assignments.",
+                teachers: "Manage attendance holder accounts.",
+                courses: "Manage courses and attendance holder assignments.",
                 departments: "Manage academic departments.",
                 venues: "Manage attendance locations.",
                 sessions: "View attendance sessions.",
