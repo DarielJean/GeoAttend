@@ -1,5 +1,13 @@
 from django import forms
-from .models import Session, Course
+from django.contrib.auth.models import User
+from .models import (
+    AttendanceRecord,
+    Course,
+    Department,
+    Session,
+    Student,
+    Venue,
+)
 
 
 class SessionCreateForm(forms.ModelForm):
@@ -79,3 +87,53 @@ class SessionCreateForm(forms.ModelForm):
             )
 
         return cleaned_data
+
+
+class StudentEditForm(forms.ModelForm):
+    class Meta:
+        model = Student
+        fields = ["student_id", "firstname", "lastname", "email", "user"]
+
+
+class AttendanceHolderEditForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["username", "first_name", "last_name", "email", "is_active"]
+
+
+class CourseEditForm(forms.ModelForm):
+    class Meta:
+        model = Course
+        fields = ["code", "name", "department", "teacher"]
+
+
+class DepartmentEditForm(forms.ModelForm):
+    class Meta:
+        model = Department
+        fields = ["code", "name"]
+
+
+class VenueEditForm(forms.ModelForm):
+    class Meta:
+        model = Venue
+        fields = ["name", "latitude", "longitude", "default_radius_m"]
+
+
+class SessionEditForm(SessionCreateForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["course"].queryset = Course.objects.all()
+
+
+class AttendanceRecordEditForm(forms.ModelForm):
+    class Meta:
+        model = AttendanceRecord
+        fields = [
+            "session",
+            "student",
+            "status",
+            "distance_m",
+            "lat",
+            "lng",
+            "device_id",
+        ]

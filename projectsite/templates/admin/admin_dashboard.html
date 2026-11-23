@@ -279,6 +279,40 @@
             background: #f8faf8;
         }
 
+        .row-actions {
+            white-space: nowrap;
+        }
+
+        .btn-edit, .btn-del {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-edit {
+            background: #eaf2ec;
+            color: #1A361F;
+            margin-right: 6px;
+        }
+
+        .btn-edit:hover {
+            background: #d7e6db;
+        }
+
+        .btn-del {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .btn-del:hover {
+            background: #fecaca;
+        }
+
         .empty {
             text-align: center;
             color: #888;
@@ -556,6 +590,7 @@
                                     <th>Last Name</th>
                                     <th>Email</th>
                                     <th>Account</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
 
@@ -576,12 +611,17 @@
                                             No Account
                                         {% endif %}
                                     </td>
+
+                                    <td class="row-actions">
+                                        <a href="{% url 'admin-student-edit' student.pk %}" class="btn-edit">Edit</a>
+                                        <a href="{% url 'admin-student-delete' student.pk %}" class="btn-del">Delete</a>
+                                    </td>
                                 </tr>
 
                                 {% empty %}
 
                                 <tr>
-                                    <td colspan="5" class="empty">
+                                    <td colspan="6" class="empty">
                                         No students found.
                                     </td>
                                 </tr>
@@ -628,6 +668,7 @@
                                     <th>First Name</th>
                                     <th>Last Name</th>
                                     <th>Email</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
 
@@ -640,12 +681,16 @@
                                     <td>{{ teacher.first_name }}</td>
                                     <td>{{ teacher.last_name }}</td>
                                     <td>{{ teacher.email }}</td>
+                                    <td class="row-actions">
+                                        <a href="{% url 'admin-teacher-edit' teacher.pk %}" class="btn-edit">Edit</a>
+                                        <a href="{% url 'admin-teacher-delete' teacher.pk %}" class="btn-del">Delete</a>
+                                    </td>
                                 </tr>
 
                                 {% empty %}
 
                                 <tr>
-                                    <td colspan="4" class="empty">
+                                    <td colspan="5" class="empty">
                                         No attendance holders found.
                                     </td>
                                 </tr>
@@ -692,6 +737,7 @@
                                     <th>Course Name</th>
                                     <th>Department</th>
                                     <th>Attendance Holder</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
 
@@ -710,12 +756,16 @@
                                         {{ course.teacher.first_name }}
                                         {{ course.teacher.last_name }}
                                     </td>
+                                    <td class="row-actions">
+                                        <a href="{% url 'admin-course-edit' course.pk %}" class="btn-edit">Edit</a>
+                                        <a href="{% url 'admin-course-delete' course.pk %}" class="btn-del">Delete</a>
+                                    </td>
                                 </tr>
 
                                 {% empty %}
 
                                 <tr>
-                                    <td colspan="4" class="empty">
+                                    <td colspan="5" class="empty">
                                         No courses found.
                                     </td>
                                 </tr>
@@ -760,6 +810,7 @@
                                 <tr>
                                     <th>Code</th>
                                     <th>Name</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
 
@@ -770,12 +821,16 @@
                                 <tr>
                                     <td>{{ department.code }}</td>
                                     <td>{{ department.name }}</td>
+                                    <td class="row-actions">
+                                        <a href="{% url 'admin-department-edit' department.pk %}" class="btn-edit">Edit</a>
+                                        <a href="{% url 'admin-department-delete' department.pk %}" class="btn-del">Delete</a>
+                                    </td>
                                 </tr>
 
                                 {% empty %}
 
                                 <tr>
-                                    <td colspan="2" class="empty">
+                                    <td colspan="3" class="empty">
                                         No departments found.
                                     </td>
                                 </tr>
@@ -813,6 +868,7 @@
                                     <th>Latitude</th>
                                     <th>Longitude</th>
                                     <th>Default Radius</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
 
@@ -825,12 +881,16 @@
                                     <td>{{ venue.latitude }}</td>
                                     <td>{{ venue.longitude }}</td>
                                     <td>{{ venue.default_radius_m }} m</td>
+                                    <td class="row-actions">
+                                        <a href="{% url 'admin-venue-edit' venue.pk %}" class="btn-edit">Edit</a>
+                                        <a href="{% url 'admin-venue-delete' venue.pk %}" class="btn-del">Delete</a>
+                                    </td>
                                 </tr>
 
                                 {% empty %}
 
                                 <tr>
-                                    <td colspan="4" class="empty">
+                                    <td colspan="5" class="empty">
                                         No venues found.
                                     </td>
                                 </tr>
@@ -870,6 +930,7 @@
                                     <th>Start</th>
                                     <th>End</th>
                                     <th>Radius</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
 
@@ -884,12 +945,16 @@
                                     <td>{{ session.starts_at }}</td>
                                     <td>{{ session.ends_at }}</td>
                                     <td>{{ session.radius_m }} m</td>
+                                    <td class="row-actions">
+                                        <a href="{% url 'admin-session-edit' session.pk %}" class="btn-edit">Edit</a>
+                                        <a href="{% url 'admin-session-delete' session.pk %}" class="btn-del">Delete</a>
+                                    </td>
                                 </tr>
 
                                 {% empty %}
 
                                 <tr>
-                                    <td colspan="6" class="empty">
+                                    <td colspan="7" class="empty">
                                         No sessions found.
                                     </td>
                                 </tr>
@@ -929,6 +994,7 @@
                                     <th>Status</th>
                                     <th>Distance</th>
                                     <th>Checked In</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
 
@@ -961,12 +1027,17 @@
                                     <td>
                                         {{ record.checked_in_at }}
                                     </td>
+
+                                    <td class="row-actions">
+                                        <a href="{% url 'admin-attendance-edit' record.pk %}" class="btn-edit">Edit</a>
+                                        <a href="{% url 'admin-attendance-delete' record.pk %}" class="btn-del">Delete</a>
+                                    </td>
                                 </tr>
 
                                 {% empty %}
 
                                 <tr>
-                                    <td colspan="6" class="empty">
+                                    <td colspan="7" class="empty">
                                         No attendance records found.
                                     </td>
                                 </tr>
@@ -1049,6 +1120,17 @@
             document.getElementById("page-description").textContent =
                 descriptions[sectionId];
         }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const params = new URLSearchParams(window.location.search);
+            const section = params.get("section");
+            if (section && document.getElementById(section)) {
+                const navLink = document.querySelector(`.nav-link[onclick*="'${section}'"]`);
+                if (navLink) {
+                    showSection(section, navLink);
+                }
+            }
+        });
 
     </script>
 

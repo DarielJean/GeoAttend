@@ -6,8 +6,16 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
-from .forms import SessionCreateForm
-
+from .forms import (
+    AttendanceHolderEditForm,
+    AttendanceRecordEditForm,
+    CourseEditForm,
+    DepartmentEditForm,
+    SessionCreateForm,
+    SessionEditForm,
+    StudentEditForm,
+    VenueEditForm,
+)
 from .models import (
     Department,
     Course,
@@ -554,4 +562,213 @@ def admin_course_create_view(request):
             "departments": departments,
             "teachers": teachers,
         },
+    )
+
+
+def _edit_model_object(request, model, form_class, pk, item_label, redirect_section):
+    if not is_admin(request.user):
+        messages.error(request, "Access denied: Administrator account required.")
+        return redirect_by_role(request.user)
+
+    obj = get_object_or_404(model, pk=pk)
+    if request.method == "POST":
+        form = form_class(request.POST, instance=obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"{item_label} updated successfully.")
+            return redirect(f"/admin-dashboard/?section={redirect_section}")
+    else:
+        form = form_class(instance=obj)
+
+    return render(
+        request,
+        "admin/edit_item.html",
+        {
+            "form": form,
+            "item_label": item_label,
+            "obj": obj,
+            "cancel_section": redirect_section,
+        },
+    )
+
+
+def _delete_model_object(
+    request, model, pk, item_label, redirect_section, delete_fn=None
+):
+    if not is_admin(request.user):
+        messages.error(request, "Access denied: Administrator account required.")
+        return redirect_by_role(request.user)
+
+    obj = get_object_or_404(model, pk=pk)
+    if request.method == "POST":
+        if delete_fn:
+            delete_fn(obj)
+        else:
+            obj.delete()
+        messages.success(request, f"{item_label} deleted successfully.")
+        return redirect(f"/admin-dashboard/?section={redirect_section}")
+
+    return render(
+        request,
+        "admin/confirm_delete.html",
+        {
+            "item_label": item_label,
+            "obj": obj,
+            "cancel_section": redirect_section,
+        },
+    )
+
+
+# Students
+@login_required
+def admin_student_edit_view(request, pk):
+    return _edit_model_object(
+        request, Student, StudentEditForm, pk, "Student", "students"
+    )
+
+
+@login_required
+def admin_student_delete_view(request, pk):
+    def _delete_student(student):
+        linked_user = student.user
+        student.delete()
+        if linked_user and not linked_user.is_superuser and not linked_user.is_staff:
+            linked_user.delete()
+
+    return _delete_model_object(
+        request, Student, pk, "Student", "students", delete_fn=_delete_student
+    )
+
+
+# Attendance Holders
+@login_required
+def admin_teacher_edit_view(request, pk):
+    if not is_admin(request.user):
+        messages.error(request, "Access denied: Administrator account required.")
+        return redirect_by_role(request.user)
+
+    teacher = get_object_or_404(
+        User.objects.filter(is_staff=False, is_superuser=False).exclude(
+            student_profile__isnull=False
+        ),
+        pk=pk,
+    )
+    if request.method == "POST":
+        form = AttendanceHolderEditForm(request.POST, instance=teacher)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Attendance Holder updated successfully.")
+            return redirect("/admin-dashboard/?section=teachers")
+    else:
+        form = AttendanceHolderEditForm(instance=teacher)
+
+    return render(
+        request,
+        "admin/edit_item.html",
+        {
+            "form": form,
+            "item_label": "Attendance Holder",
+            "obj": teacher,
+            "cancel_section": "teachers",
+        },
+    )
+
+
+@login_required
+def admin_teacher_delete_view(request, pk):
+    teacher_qs = User.objects.filter(is_staff=False, is_superuser=False).exclude(
+        student_profile__isnull=False
+    )
+    if not is_admin(request.user):
+        messages.error(request, "Access denied: Administrator account required.")
+        return redirect_by_role(request.user)
+
+    teacher = get_object_or_404(teacher_qs, pk=pk)
+    if request.method == "POST":
+        teacher.delete()
+        messages.success(request, "Attendance Holder deleted successfully.")
+        return redirect("/admin-dashboard/?section=teachers")
+
+    return render(
+        request,
+        "admin/confirm_delete.html",
+        {
+            "item_label": "Attendance Holder",
+            "obj": teacher,
+            "cancel_section": "teachers",
+        },
+    )
+
+
+# Courses
+@login_required
+def admin_course_edit_view(request, pk):
+    return _edit_model_object(
+        request, Course, CourseEditForm, pk, "Course", "courses"
+    )
+
+
+@login_required
+def admin_course_delete_view(request, pk):
+    return _delete_model_object(request, Course, pk, "Course", "courses")
+
+
+# Departments
+@login_required
+def admin_department_edit_view(request, pk):
+    return _edit_model_object(
+        request, Department, DepartmentEditForm, pk, "Department", "departments"
+    )
+
+
+@login_required
+def admin_department_delete_view(request, pk):
+    return _delete_model_object(
+        request, Department, pk, "Department", "departments"
+    )
+
+
+# Venues
+@login_required
+def admin_venue_edit_view(request, pk):
+    return _edit_model_object(
+        request, Venue, VenueEditForm, pk, "Venue", "venues"
+    )
+
+
+@login_required
+def admin_venue_delete_view(request, pk):
+    return _delete_model_object(request, Venue, pk, "Venue", "venues")
+
+
+# Sessions
+@login_required
+def admin_session_edit_view(request, pk):
+    return _edit_model_object(
+        request, Session, SessionEditForm, pk, "Session", "sessions"
+    )
+
+
+@login_required
+def admin_session_delete_view(request, pk):
+    return _delete_model_object(request, Session, pk, "Session", "sessions")
+
+
+# Attendance Records
+@login_required
+def admin_attendance_edit_view(request, pk):
+    return _edit_model_object(
+        request,
+        AttendanceRecord,
+        AttendanceRecordEditForm,
+        pk,
+        "Attendance Record",
+        "attendance",
+    )
+
+
+@login_required
+def admin_attendance_delete_view(request, pk):
+    return _delete_model_object(
+        request, AttendanceRecord, pk, "Attendance Record", "attendance"
     )
