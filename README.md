@@ -4,7 +4,7 @@ account for admin(so Maam can access the system):
 Username: GeoAttend
 pass: 12345678
 
-GeoAttend is a web-based attendance system we built using Django. Instead of passing around paper sheets or calling names one by one, students can check in using their phones or laptops, and the system checks if they are actually inside the classroom or venue using GPS location.
+GeoAttend is a web-based attendance system we built using Django. Instead of waiting a long line to get attendace, students can check in using their phones or laptops, and the system checks if they are actually inside the range or venue using GPS location.
 
 ## What It Does
 - **Location Check (Geofencing):** Makes sure students are within the allowed distance (radius) of the class venue before marking them present.
